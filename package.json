@@ -31,17 +31,27 @@
                 "assistantsChatExtension.azureOpenAIApiKey": {
                     "type": "string",
                     "default": "",
-                    "description": "API key for accessing Azure OpenAI services."
+                    "description": "API key for accessing Azure OpenAI services.",
+                    "examples": [
+                        "0123456789abcdef0123456789abcdef"
+                    ]
                 },
                 "assistantsChatExtension.azureOpenAIEndpoint": {
                     "type": "string",
                     "default": "",
-                    "description": "Endpoint URL for Azure OpenAI services."
+                    "description": "Endpoint URL for Azure OpenAI services.",
+                    "examples": [
+                        "https://your-resource-name.openai.azure.com"
+                    ]
                 },
                 "assistantsChatExtension.azureOpenAIDeploymentName": {
                     "type": "string",
                     "default": "",
-                    "description": "Deployment name for the Azure OpenAI model."
+                    "description": "Deployment name for the Azure OpenAI model.",
+                    "examples": [
+                        "france-gpt-35-turbo",
+                        "hr-gpt4"
+                    ]
                 }
             }
         },
