@@ -93,6 +93,23 @@ async function registerChatParticipant(context: vscode.ExtensionContext, client:
 
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
+            if (request.command === 'change') {
+                const newAssistantId = await promptForAssistant(client, configuration, stream);
+                if (newAssistantId) {
+                    assistantId = newAssistantId;
+                    const assistants = await client.beta.assistants.list();
+                    const selectedAssistant = assistants.data.find((assistant: Assistant) => assistant.id === assistantId);
+                    if (selectedAssistant && selectedAssistant.name) {
+                        stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**. How can I assist you today?`);
+                    } else {
+                        stream.markdown(`You have switched to the assistant with ID: **${assistantId}**. How can I assist you today?`);
+                    }
+                } else {
+                    stream.markdown('No assistant selected. Please try again.');
+                }
+                return { metadata: { command: 'change' } };
+            }
+
             if (!apiKey) {
                 const newApiKey = await promptForApiKey(configuration);
                 if (!newApiKey) {
@@ -111,6 +128,11 @@ async function registerChatParticipant(context: vscode.ExtensionContext, client:
             if (model && assistantId) {
                 const threadId = await getThreadId(assistantId);
                 const userMessage = request.prompt;
+
+                if (userMessage.trim() === '') {
+                    stream.markdown('Please enter a non-empty message.');
+                    return { metadata: { command: '' } };
+                }
 
                 const messageBody = {
                     role: 'user' as const,
