@@ -1,0 +1,81 @@
+{
+    "name": "assistants-chat-extension",
+    "displayName": "Assistants Chat Extension",
+    "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
+    "version": "0.0.1",
+    "categories": [
+        "AI",
+        "Chat"
+    ],
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "contributes": {
+        "configuration": {
+            "type": "object",
+            "properties": {
+                "assistantsChatExtension.apiKey": {
+                    "type": "string",
+                    "default": "",
+                    "description": "API key for accessing AI services."
+                },
+                "assistantsChatExtension.model": {
+                    "type": "string",
+                    "enum": [
+                        "gpt-3.5-turbo",
+                        "gpt-4"
+                    ],
+                    "default": "gpt-3.5-turbo",
+                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                }
+            }
+        },
+        "chatParticipants": [
+            {
+                "id": "chat-sample.assistant",
+                "fullName": "Assistant",
+                "name": "assistant",
+                "description": "Your AI Assistant",
+                "isSticky": true,
+                "commands": [
+                    {
+                        "name": "change",
+                        "description": "Ask how to change the OpenAI assistant"
+                    }
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "assistant.query",
+                "title": "AI Assistant: Ask Assistant"
+            },
+            {
+                "command": "assistantsChatExtension.setApiKey",
+                "title": "AI Assistant: Set API Key"
+            },
+            {
+                "command": "assistantsChatExtension.selectAssistant",
+                "title": "AI Assistant: Select Assistant"
+            }
+        ]
+    },
+    "main": "./out/extension.js",
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "dependencies": {
+        "openai": "^4.51.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.5.9",
+        "@vscode/prompt-tsx": "^0.2.3-alpha",
+        "@types/vscode": "1.90.0",
+        "eslint": "^7.22.0",
+        "run-script-os": "^1.1.6",
+        "tslint": "^6.1.3",
+        "typescript": "^4.0.3"
+    }
+}
