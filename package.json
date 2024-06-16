@@ -17,7 +17,7 @@
                 "assistantsChatExtension.apiKey": {
                     "type": "string",
                     "default": "",
-                    "description": "API key for accessing AI services."
+                    "description": "API key for accessing OpenAI services."
                 },
                 "assistantsChatExtension.model": {
                     "type": "string",
@@ -27,6 +27,21 @@
                     ],
                     "default": "gpt-3.5-turbo",
                     "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                },
+                "assistantsChatExtension.azureOpenAIApiKey": {
+                    "type": "string",
+                    "default": "",
+                    "description": "API key for accessing Azure OpenAI services."
+                },
+                "assistantsChatExtension.azureOpenAIEndpoint": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Endpoint URL for Azure OpenAI services."
+                },
+                "assistantsChatExtension.azureOpenAIDeploymentName": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Deployment name for the Azure OpenAI model."
                 }
             }
         },
@@ -67,7 +82,9 @@
         "watch": "tsc -watch -p ./"
     },
     "dependencies": {
-        "openai": "^4.51.0"
+        "openai": "^4.51.0",
+        "@azure/openai": "^1.0.0-beta.12",
+        "@azure/openai-assistants": "^1.0.0-beta.3"
     },
     "devDependencies": {
         "@types/node": "^20.5.9",
