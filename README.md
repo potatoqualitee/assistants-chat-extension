@@ -109,7 +109,7 @@ Here's a screenshot for reference:
 
 ## Contributing
 
-Contributions to the Assistants Chat Extension are welcome! If you encounter any issues, have suggestions for improvements, or would like to contribute new features, please open an issue or submit a pull request on the [GitHub repository](https://github.com/potatoqualitee/vscode-assistant-chat).
+Contributions to the Assistants Chat Extension are welcome! If you encounter any issues, have suggestions for improvements, or would like to contribute new features, please open an issue or submit a pull request.
 
 ## References
 
