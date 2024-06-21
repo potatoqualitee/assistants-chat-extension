@@ -26,7 +26,7 @@
                         "gpt-4"
                     ],
                     "default": "gpt-3.5-turbo",
-                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                    "description": "The model that Copilot will use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
                 }
             }
         },
@@ -35,7 +35,7 @@
                 "id": "chat-sample.assistant",
                 "fullName": "Assistant",
                 "name": "assistant",
-                "description": "Your AI Assistant",
+                "description": "Your OpenAI Assistant",
                 "isSticky": true,
                 "commands": [
                     {
