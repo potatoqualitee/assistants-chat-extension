@@ -60,7 +60,7 @@
                 "id": "chat-sample.assistant",
                 "fullName": "Assistant",
                 "name": "assistant",
-                "description": "Your AI Assistant",
+                "description": "Your OpenAI Assistant",
                 "isSticky": true,
                 "commands": [
                     {
