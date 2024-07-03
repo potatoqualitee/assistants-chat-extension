@@ -63,91 +63,31 @@ export class Wrapper {
         }
     }
 
-    async getThreadId(assistantId: string): Promise<string> {
-        if (this.isAzure) {
-            // Azure OpenAI doesn't have the concept of threads
-            // You can return a unique identifier or an empty string
-            return '';
+    async createAndPollRun(assistantId: string, question: string): Promise<any> {
+        console.log('createAndPollRun called with:', { assistantId, question });
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            if (!assistantId) {
+                throw new Error("Assistant ID is required.");
+            }
+
+            try {
+                const response = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, question);
+                console.log('Response from callAssistant:', response);
+                return { content: response };
+            } catch (error) {
+                console.error("Error in createAndPollRun:", error);
+                throw error;
+            }
         } else {
             const thread = await this.client.beta.threads.create();
-            return thread.id;
-        }
-    }
-
-    async createMessage(threadId: string, messageBody: any): Promise<void> {
-        console.log('Sending message:', messageBody);
-
-        if (!messageBody.content || messageBody.content.trim() === '') {
-            throw new Error('Message content must be non-empty.');
-        }
-
-        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
-            await this.callAssistant(this.azureEndpoint, this.azureApiKey, threadId, messageBody.content, () => { });
-        } else {
-            await this.client.beta.threads.messages.create(threadId, messageBody);
-        }
-    }
-
-    async createAndPollRun(threadId: string, assistantId: string): Promise<any> {
-        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
-            if (!assistantId) {
-                throw new Error("Assistant ID is required.");
-            }
-
-            let runResponse = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', () => { });
-            if (runResponse && runResponse.status) {
-                do {
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                    runResponse = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', () => { });
-                } while (runResponse.status === "queued" || runResponse.status === "in_progress");
-            }
-            return runResponse;
-        } else {
-            await this.client.beta.threads.messages.create(threadId, { role: 'user', content: '' });
-            const run = await this.client.beta.threads.runs.createAndPoll(threadId, { assistant_id: assistantId });
+            await this.client.beta.threads.messages.create(thread.id, { role: 'user', content: question });
+            const run = await this.client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistantId });
             return run;
-        }
-    }
-
-    async listMessages(threadId: string, assistantId: string): Promise<any[]> {
-        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
-            if (!assistantId) {
-                throw new Error("Assistant ID is required.");
-            }
-
-            let messages: any[] = [];
-            await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', (err: any, status: string, data: any) => {
-                if (err) {
-                    console.error('Error retrieving messages:', err);
-                } else if (status === 'text returned') {
-                    messages.push({ role: 'assistant', content: data.value });
-                }
-            });
-            return messages;
-        } else {
-            const messages = await this.client.beta.threads.messages.list(threadId);
-            return messages.data;
         }
     }
 }
 
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration) {
-    let threadIdMap: { [key: string]: string };
-    let getThreadId: (assistantId: string) => Promise<string>;
-
-    threadIdMap = context.globalState.get('assistantsChatExtension.threadIdMap', {});
-
-    getThreadId = async (assistantId: string): Promise<string> => {
-        if (threadIdMap[assistantId]) {
-            return threadIdMap[assistantId];
-        } else {
-            const threadId = await wrapper.getThreadId(assistantId);
-            threadIdMap[assistantId] = threadId;
-            context.globalState.update('assistantsChatExtension.threadIdMap', threadIdMap);
-            return threadId;
-        }
-    };
-
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
             if (request.command === 'change') {
@@ -175,7 +115,6 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
             }
 
             if (model && assistantId) {
-                const threadId = await getThreadId(assistantId);
                 const userMessage = request.prompt;
 
                 if (userMessage.trim() === '') {
@@ -183,38 +122,22 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     return { metadata: { command: '' } };
                 }
 
-                const messageBody = {
-                    role: 'user' as const,
-                    content: userMessage,
-                };
-
                 console.log('User message:', userMessage);
-                console.log('Message body sent to API:', messageBody);
 
-                await wrapper.createMessage(threadId, messageBody);
-                const run = await wrapper.createAndPollRun(threadId, assistantId);
+                const run = await wrapper.createAndPollRun(assistantId, userMessage);
 
                 console.log('Run created and polled:', run);
 
-                const retrievedMessages = await wrapper.listMessages(threadId, assistantId);
-                console.log('Retrieved messages:', retrievedMessages);
-
-                const lastMessage = retrievedMessages.find((message: any) => message.role === 'assistant');
-                if (lastMessage) {
-                    let content;
-                    if (Array.isArray(lastMessage.content)) {
-                        content = lastMessage.content
-                            .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
-                            .map((part: any) => part.text.value)
-                            .join('');
-                    } else {
-                        content = lastMessage.content;
-                    }
-                    console.log('Assistant response content:', content);
-                    stream.markdown(content);
+                if (run && run.content) {
+                    console.log('Assistant response content:', run.content);
+                    stream.markdown(run.content);
+                } else {
+                    console.error('No content in run response');
+                    stream.markdown("I'm sorry, but I couldn't generate a response. Please try again.");
                 }
             } else {
                 console.error('Model or Assistant ID is undefined. Unable to create a run.');
+                stream.markdown("There was an error processing your request. Please try again or select a different assistant.");
             }
         } catch (err) {
             handleError(err, stream, configuration, context);
@@ -226,64 +149,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     const gpt = vscode.chat.createChatParticipant('openai-assistant.chat', handler);
     gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpeg');
 
-    context.subscriptions.push(
-        gpt,
-        vscode.commands.registerTextEditorCommand('gpt.assistantInEditor', async (textEditor: vscode.TextEditor) => {
-            const text = textEditor.document.getText();
-            console.log('Editor text:', text);
-
-            try {
-                if (!assistantId) {
-                    assistantId = await promptForAssistant(wrapper, configuration);
-                    if (!assistantId) {
-                        return;
-                    }
-                }
-
-                if (model && assistantId) {
-                    const threadId = await getThreadId(assistantId);
-                    const messageBody = {
-                        role: 'user' as const,
-                        content: text,
-                    };
-
-                    console.log('Editor text sent as message:', text);
-                    console.log('Message body sent to API:', messageBody);
-
-                    await wrapper.createMessage(threadId, messageBody);
-                    const run = await wrapper.createAndPollRun(threadId, assistantId);
-
-                    console.log('Run created and polled:', run);
-
-                    const retrievedMessages = await wrapper.listMessages(threadId, assistantId);
-                    console.log('Retrieved messages:', retrievedMessages);
-
-                    const lastMessage = retrievedMessages.find((message: any) => message.role === 'assistant');
-                    if (lastMessage) {
-                        let content;
-                        if (Array.isArray(lastMessage.content)) {
-                            content = lastMessage.content
-                                .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
-                                .map((part: any) => part.text.value)
-                                .join('');
-                        } else {
-                            content = lastMessage.content;
-                        }
-                        console.log('Assistant response content:', content);
-                        await textEditor.edit((edit) => {
-                            const start = new vscode.Position(0, 0);
-                            const end = new vscode.Position(textEditor.document.lineCount - 1, textEditor.document.lineAt(textEditor.document.lineCount - 1).text.length);
-                            edit.replace(new vscode.Range(start, end), content);
-                        });
-                    }
-                } else {
-                    console.error('Model or Assistant ID is undefined. Unable to create a run.');
-                }
-            } catch (err) {
-                handleError(err, undefined, configuration, context);
-            }
-        })
-    );
+    context.subscriptions.push(gpt);
 }
 
 function handleError(err: any, stream?: vscode.ChatResponseStream, configuration?: vscode.WorkspaceConfiguration, context?: vscode.ExtensionContext): void {
