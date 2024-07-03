@@ -1,6 +1,6 @@
 import { AssistantsClient, AzureKeyCredential } from "@azure/openai-assistants";
-import { setLogLevel } from "@azure/logger";
-setLogLevel("info");
+//import { setLogLevel } from "@azure/logger";
+//setLogLevel("info");
 
 export const listAssistants = async (endpoint, apiKey) => {
     const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
