@@ -26,38 +26,60 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
         // Get or create a thread for this user
         let threadId = threadMap.get(userId);
         if (!threadId) {
+            console.log('Creating a new thread for user:', userId);
             const thread = await assistantsClient.createThread();
             threadId = thread.id;
             threadMap.set(userId, threadId);
+        } else {
+            console.log('Using existing thread for user:', userId);
         }
 
         // Create a message in the thread
+        console.log('Creating a message in thread:', threadId);
         await assistantsClient.createMessage(threadId, "user", question);
 
         // Create and start a run
+        console.log('Creating and starting a run');
         let runResponse = await assistantsClient.createRun(threadId, {
             assistantId: assistantId
         });
 
         // Poll for completion
-        do {
+        console.log('Polling for run completion');
+        while (runResponse.status === "queued" || runResponse.status === "in_progress") {
             await new Promise((resolve) => setTimeout(resolve, 800));
             runResponse = await assistantsClient.getRun(threadId, runResponse.id);
-        } while (runResponse.status === "queued" || runResponse.status === "in_progress");
+        }
 
         if (runResponse.status === "completed") {
+            console.log('Run completed, retrieving messages');
             const runMessages = await assistantsClient.listMessages(threadId);
-            let assistantResponse = "";
-            for (const runMessageDatum of runMessages.data) {
-                if (runMessageDatum.role === "assistant") {
-                    for (const item of runMessageDatum.content) {
-                        if (item.type === "text") {
-                            assistantResponse += item.text.value + "\n";
-                        }
-                    }
-                }
+            console.log('Retrieved messages:', runMessages.data);
+
+            // Get only the assistant messages generated during the current run
+            const assistantMessages = runMessages.data
+                .filter(msg => msg.role === "assistant" && msg.runId === runResponse.id);
+
+            console.log('Filtered assistant messages:', assistantMessages);
+
+            // Combine the content of all assistant messages
+            const responseContent = assistantMessages.flatMap(msg => msg.content);
+
+            console.log('Combined response content:', responseContent);
+
+            // Extract and concatenate the text content
+            const textContent = responseContent
+                .filter(item => item.type === "text")
+                .map(item => item.text.value)
+                .join("\n");
+
+            console.log('Extracted text content:', textContent);
+
+            if (textContent.trim() !== "") {
+                return textContent;
+            } else {
+                return "No response from the assistant.";
             }
-            return assistantResponse.trim();
         } else {
             throw new Error(`Run failed with status: ${runResponse.status}`);
         }

@@ -28,6 +28,16 @@
                     "default": "gpt-3.5-turbo",
                     "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
                 },
+                "assistantsChatExtension.apiProvider": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "openai",
+                        "azure"
+                    ],
+                    "default": "auto",
+                    "description": "Select the API provider to use. 'auto' will choose based on available API keys."
+                },
                 "assistantsChatExtension.azureOpenAIApiKey": {
                     "type": "string",
                     "default": "",
@@ -82,6 +92,10 @@
             {
                 "command": "assistantsChatExtension.selectAssistant",
                 "title": "AI Assistant: Select Assistant"
+            },
+            {
+                "command": "assistantsChatExtension.selectApiProvider",
+                "title": "AI Assistant: Select API Provider"
             }
         ]
     },

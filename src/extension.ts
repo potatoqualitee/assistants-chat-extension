@@ -64,36 +64,27 @@ export async function activate(context: vscode.ExtensionContext) {
     let azureApiKey: string = configuration.get<string>('azureOpenAIApiKey', '')!;
     let azureEndpoint: string = configuration.get<string>('azureOpenAIEndpoint', '')!;
     let azureDeployment: string = configuration.get<string>('azureOpenAIDeploymentName', '')!;
-    let isAzure = false;
 
-    if (azureApiKey && azureEndpoint && azureDeployment) {
-        isAzure = true;
-    } else if (!apiKey) {
-        const choice = await vscode.window.showInformationMessage('No API key or Azure OpenAI configuration found. Please set up your preferred provider.', 'OpenAI', 'Azure OpenAI');
-
-        if (choice === 'OpenAI') {
-            apiKey = (await promptForApiKey(configuration))!;
-            if (!apiKey) {
-                return;
-            }
-        } else if (choice === 'Azure OpenAI') {
-            const azureConfigured = await promptForAzureConfiguration(configuration);
-            if (!azureConfigured) {
-                return;
-            }
-            azureApiKey = configuration.get<string>('azureOpenAIApiKey', '')!;
-            azureEndpoint = configuration.get<string>('azureOpenAIEndpoint', '')!;
-            azureDeployment = configuration.get<string>('azureOpenAIDeploymentName', '')!;
-            isAzure = true;
+    // New code to determine the API provider
+    let apiProvider = configuration.get<string>('apiProvider', 'auto');
+    if (apiProvider === 'auto') {
+        if (apiKey && azureApiKey) {
+            apiProvider = await promptForApiProvider();
+        } else if (apiKey) {
+            apiProvider = 'openai';
+        } else if (azureApiKey && azureEndpoint && azureDeployment) {
+            apiProvider = 'azure';
         } else {
-            return;
+            apiProvider = 'openai';  // Default to OpenAI if no keys are set
         }
     }
 
+    configuration.update('apiProvider', apiProvider, vscode.ConfigurationTarget.Global);
+
     const wrapper = new Wrapper({
-        apiKey: isAzure ? azureApiKey : apiKey,
-        endpoint: isAzure ? azureEndpoint : undefined,
-        isAzure,
+        apiKey: apiProvider === 'azure' ? azureApiKey : apiKey,
+        endpoint: apiProvider === 'azure' ? azureEndpoint : undefined,
+        isAzure: apiProvider === 'azure',
         azureApiKey,
         azureEndpoint,
         azureDeployment,
@@ -155,6 +146,12 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }),
 
+        vscode.commands.registerCommand('assistantsChatExtension.selectApiProvider', async () => {
+            const newProvider = await promptForApiProvider();
+            configuration.update('apiProvider', newProvider, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`API provider set to ${newProvider}. Please reload the window for changes to take effect.`);
+        }),
+
         vscode.workspace.onDidChangeConfiguration(async (event) => {
             if (event.affectsConfiguration('assistantsChatExtension.apiKey')) {
                 const newApiKey = configuration.get<string>('apiKey', '');
@@ -189,6 +186,14 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+}
+
+async function promptForApiProvider(): Promise<string> {
+    const choice = await vscode.window.showQuickPick(
+        ['OpenAI', 'Azure OpenAI'],
+        { placeHolder: 'Select API provider' }
+    );
+    return choice === 'Azure OpenAI' ? 'azure' : 'openai';
 }
 
 export function deactivate() { }

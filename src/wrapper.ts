@@ -30,7 +30,14 @@ export class Wrapper {
     private listAssistantsFunc: any;
     private callAssistant: any;
 
-    constructor(config: { apiKey: string, endpoint?: string, isAzure: boolean, azureApiKey?: string, azureEndpoint?: string, azureDeployment?: string }) {
+    constructor(config: {
+        apiKey: string,
+        endpoint?: string,
+        isAzure: boolean,
+        azureApiKey?: string,
+        azureEndpoint?: string,
+        azureDeployment?: string
+    }) {
         this.isAzure = config.isAzure;
         if (this.isAzure) {
             this.azureApiKey = config.azureApiKey;
