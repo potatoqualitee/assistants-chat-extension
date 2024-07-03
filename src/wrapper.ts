@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
 import { promptForAssistant } from './assistantUtils';
 
 interface IGPTChatResult extends vscode.ChatResult {
@@ -22,13 +22,13 @@ export interface Assistant {
 }
 
 export class Wrapper {
-    private client: any;
+    private openaiClient: OpenAI | null = null;
     private isAzure: boolean;
     private azureApiKey?: string;
     private azureEndpoint?: string;
     private azureDeployment?: string;
     private listAssistantsFunc: any;
-    private callAssistant: any;
+    private callAssistantFunc: any;
 
     constructor(config: {
         apiKey: string,
@@ -44,14 +44,16 @@ export class Wrapper {
             this.azureEndpoint = config.azureEndpoint;
             this.azureDeployment = config.azureDeployment;
         } else {
-            this.client = new OpenAI({ apiKey: config.apiKey });
+            this.openaiClient = new OpenAI({ apiKey: config.apiKey });
         }
     }
 
     async init() {
-        const { listAssistants, callAssistant } = await import('./agent.mjs');
-        this.listAssistantsFunc = listAssistants;
-        this.callAssistant = callAssistant;
+        if (this.isAzure) {
+            const { listAssistants, callAssistant } = await import('./agent.mjs');
+            this.listAssistantsFunc = listAssistants;
+            this.callAssistantFunc = callAssistant;
+        }
     }
 
     async getAssistants(): Promise<Assistant[]> {
@@ -61,64 +63,82 @@ export class Wrapper {
                 id: assistant.id,
                 name: assistant.name,
             }));
-        } else {
-            const assistants = await this.client.beta.assistants.list({
+        } else if (this.openaiClient) {
+            const assistants = await this.openaiClient.beta.assistants.list({
                 order: "desc",
                 limit: 20,
             });
             return assistants.data;
+        } else {
+            throw new Error("Neither Azure nor OpenAI client is properly initialized");
         }
     }
 
-    async createAndPollRun(assistantId: string, question: string): Promise<any> {
-        console.log('createAndPollRun called with:', { assistantId, question });
-        const thread = await this.client.beta.threads.create();
-        console.log('Thread created:', thread);
-        console.log('Thread ID:', thread.id);
+    async createAndPollRun(assistantId: string, question: string, userId: string): Promise<any> {
+        console.log('createAndPollRun called with:', { assistantId, question, userId });
 
-        await this.client.beta.threads.messages.create(thread.id, { role: 'user', content: question });
-        console.log('User message created with content:', question);
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            try {
+                const response = await this.callAssistantFunc(this.azureEndpoint, this.azureApiKey, assistantId, question, userId);
+                console.log('Response from callAssistant:', response);
+                return { content: response };
+            } catch (error) {
+                console.error("Error in createAndPollRun for Azure:", error);
+                throw error;
+            }
+        } else if (this.openaiClient) {
+            try {
+                const thread = await this.openaiClient.beta.threads.create();
+                console.log('Thread created:', thread);
 
-        const run = await this.client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistantId });
-        console.log('Run created and polled:', run);
-        console.log('Run ID:', run.id);
-        console.log('Run status:', run.status);
+                await this.openaiClient.beta.threads.messages.create(thread.id, { role: 'user', content: question });
+                console.log('User message created with content:', question);
 
-        if (run && run.status === 'completed') {
-            console.log('Run completed successfully');
+                const run = await this.openaiClient.beta.threads.runs.create(thread.id, { assistant_id: assistantId });
+                console.log('Run created:', run);
 
-            const messages = await this.client.beta.threads.messages.list(thread.id);
-            console.log('Retrieved messages:', messages);
-            console.log('Number of messages:', messages.data.length);
+                let completedRun;
+                do {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    completedRun = await this.openaiClient.beta.threads.runs.retrieve(thread.id, run.id);
+                } while (completedRun.status === 'queued' || completedRun.status === 'in_progress');
 
-            const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant' && msg.run_id === run.id);
-            console.log('Found assistant message:', assistantMessage);
+                console.log('Run completed:', completedRun);
 
-            if (assistantMessage && assistantMessage.content && Array.isArray(assistantMessage.content)) {
-                console.log('Assistant message content is an array');
-                console.log('Number of content blocks in assistant message:', assistantMessage.content.length);
+                if (completedRun.status === 'completed') {
+                    const messages = await this.openaiClient.beta.threads.messages.list(thread.id);
+                    const assistantMessage = messages.data.find(msg => msg.role === 'assistant' && msg.run_id === run.id);
 
-                const content = assistantMessage.content
-                    .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
-                    .map((part: TextContentBlock) => part.text.value)
-                    .join('');
-                console.log('Filtered and mapped assistant response content:', content);
-                return { content };
-            } else {
-                console.error('Unexpected structure of assistant message:', assistantMessage);
-                console.error('Assistant message content:', assistantMessage?.content);
-                throw new Error('Unexpected structure of assistant message');
+                    if (assistantMessage && assistantMessage.content && Array.isArray(assistantMessage.content)) {
+                        const content = assistantMessage.content
+                            .filter((part: any): part is TextContentBlock => part.type === 'text')
+                            .map((part: TextContentBlock) => part.text.value)
+                            .join('');
+                        return { content };
+                    } else {
+                        throw new Error('Unexpected structure of assistant message');
+                    }
+                } else {
+                    throw new Error(`Run failed with status: ${completedRun.status}`);
+                }
+            } catch (error) {
+                console.error("Error in createAndPollRun for OpenAI:", error);
+                throw error;
             }
         } else {
-            console.error('Run failed or did not complete');
-            console.error('Run status:', run?.status);
-            console.error('Run error:', run?.last_error);
-            throw new Error('Run failed or did not complete');
+            throw new Error("Neither Azure nor OpenAI client is properly initialized");
         }
     }
 }
 
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration) {
+    // Generate or retrieve a userId
+    let userId = context.globalState.get<string>('assistantsChatExtension.userId');
+    if (!userId) {
+        userId = `user_${Date.now()}`;
+        context.globalState.update('assistantsChatExtension.userId', userId);
+    }
+
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
             if (request.command === 'change') {
@@ -155,7 +175,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.log('User message:', userMessage);
 
-                const run = await wrapper.createAndPollRun(assistantId, userMessage);
+                const run = await wrapper.createAndPollRun(assistantId, userMessage, userId);
 
                 console.log('Run created and polled:', run);
 
