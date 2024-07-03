@@ -70,39 +70,55 @@ export class Wrapper {
         }
     }
 
-    async createAndPollRun(assistantId: string, question: string, userId: string): Promise<any> {
-        console.log('createAndPollRun called with:', { assistantId, question, userId });
-        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
-            if (!assistantId) {
-                throw new Error("Assistant ID is required.");
-            }
+    async createAndPollRun(assistantId: string, question: string): Promise<any> {
+        console.log('createAndPollRun called with:', { assistantId, question });
+        const thread = await this.client.beta.threads.create();
+        console.log('Thread created:', thread);
+        console.log('Thread ID:', thread.id);
 
-            try {
-                const response = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, question, userId);
-                console.log('Response from callAssistant:', response);
-                return { content: response };
-            } catch (error) {
-                console.error("Error in createAndPollRun:", error);
-                throw error;
+        await this.client.beta.threads.messages.create(thread.id, { role: 'user', content: question });
+        console.log('User message created with content:', question);
+
+        const run = await this.client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistantId });
+        console.log('Run created and polled:', run);
+        console.log('Run ID:', run.id);
+        console.log('Run status:', run.status);
+
+        if (run && run.status === 'completed') {
+            console.log('Run completed successfully');
+
+            const messages = await this.client.beta.threads.messages.list(thread.id);
+            console.log('Retrieved messages:', messages);
+            console.log('Number of messages:', messages.data.length);
+
+            const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant' && msg.run_id === run.id);
+            console.log('Found assistant message:', assistantMessage);
+
+            if (assistantMessage && assistantMessage.content && Array.isArray(assistantMessage.content)) {
+                console.log('Assistant message content is an array');
+                console.log('Number of content blocks in assistant message:', assistantMessage.content.length);
+
+                const content = assistantMessage.content
+                    .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
+                    .map((part: TextContentBlock) => part.text.value)
+                    .join('');
+                console.log('Filtered and mapped assistant response content:', content);
+                return { content };
+            } else {
+                console.error('Unexpected structure of assistant message:', assistantMessage);
+                console.error('Assistant message content:', assistantMessage?.content);
+                throw new Error('Unexpected structure of assistant message');
             }
         } else {
-            // For non-Azure, keep the existing implementation
-            const thread = await this.client.beta.threads.create();
-            await this.client.beta.threads.messages.create(thread.id, { role: 'user', content: question });
-            const run = await this.client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistantId });
-            return run;
+            console.error('Run failed or did not complete');
+            console.error('Run status:', run?.status);
+            console.error('Run error:', run?.last_error);
+            throw new Error('Run failed or did not complete');
         }
     }
 }
 
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration) {
-    // Generate or retrieve a userId
-    let userId = context.globalState.get<string>('assistantsChatExtension.userId');
-    if (!userId) {
-        userId = `user_${Date.now()}`;
-        context.globalState.update('assistantsChatExtension.userId', userId);
-    }
-
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
             if (request.command === 'change') {
@@ -139,7 +155,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.log('User message:', userMessage);
 
-                const run = await wrapper.createAndPollRun(assistantId, userMessage, userId);
+                const run = await wrapper.createAndPollRun(assistantId, userMessage);
 
                 console.log('Run created and polled:', run);
 
