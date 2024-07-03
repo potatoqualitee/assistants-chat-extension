@@ -63,15 +63,15 @@ export class Wrapper {
         }
     }
 
-    async createAndPollRun(assistantId: string, question: string): Promise<any> {
-        console.log('createAndPollRun called with:', { assistantId, question });
+    async createAndPollRun(assistantId: string, question: string, userId: string): Promise<any> {
+        console.log('createAndPollRun called with:', { assistantId, question, userId });
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             if (!assistantId) {
                 throw new Error("Assistant ID is required.");
             }
 
             try {
-                const response = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, question);
+                const response = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, question, userId);
                 console.log('Response from callAssistant:', response);
                 return { content: response };
             } catch (error) {
@@ -79,6 +79,7 @@ export class Wrapper {
                 throw error;
             }
         } else {
+            // For non-Azure, keep the existing implementation
             const thread = await this.client.beta.threads.create();
             await this.client.beta.threads.messages.create(thread.id, { role: 'user', content: question });
             const run = await this.client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistantId });
@@ -88,6 +89,13 @@ export class Wrapper {
 }
 
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration) {
+    // Generate or retrieve a userId
+    let userId = context.globalState.get<string>('assistantsChatExtension.userId');
+    if (!userId) {
+        userId = `user_${Date.now()}`;
+        context.globalState.update('assistantsChatExtension.userId', userId);
+    }
+
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
             if (request.command === 'change') {
@@ -124,7 +132,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.log('User message:', userMessage);
 
-                const run = await wrapper.createAndPollRun(assistantId, userMessage);
+                const run = await wrapper.createAndPollRun(assistantId, userMessage, userId);
 
                 console.log('Run created and polled:', run);
 
