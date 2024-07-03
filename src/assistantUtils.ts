@@ -7,7 +7,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         stream.markdown('Please select an assistant.\n');
     }
 
-    const assistants = await wrapper.listAssistants();
+    const assistants = await wrapper.getAssistants();
     const assistantNames = assistants.map((assistant: Assistant) => assistant.name).filter((name): name is string => name !== null);
     const selectedAssistantName = await vscode.window.showQuickPick(assistantNames, {
         placeHolder: 'Select an assistant',

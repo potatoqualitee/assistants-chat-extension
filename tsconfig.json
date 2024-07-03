@@ -12,6 +12,9 @@
 		"outDir": "out",
 		"jsx": "react",
 		"jsxFactory": "vscpp",
-		"jsxFragmentFactory": "vscppf"
+		"jsxFragmentFactory": "vscppf",
+		"allowJs": true,
+		"checkJs": false,
+		"moduleResolution": "Node16"
 	}
 }

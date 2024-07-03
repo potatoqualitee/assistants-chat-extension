@@ -1,6 +1,5 @@
-const { OpenAI } = require('openai');
-const { AzureOpenAI } = require('@azure/openai-assistants');
 import * as vscode from 'vscode';
+import { OpenAI } from 'openai';
 import { promptForAssistant } from './assistantUtils';
 
 interface IGPTChatResult extends vscode.ChatResult {
@@ -17,7 +16,7 @@ interface TextContentBlock {
     };
 }
 
-export interface Assistant { // Ensure this is exported
+export interface Assistant {
     id: string;
     name: string | null;
 }
@@ -25,26 +24,36 @@ export interface Assistant { // Ensure this is exported
 export class Wrapper {
     private client: any;
     private isAzure: boolean;
+    private azureApiKey?: string;
+    private azureEndpoint?: string;
+    private azureDeployment?: string;
+    private listAssistantsFunc: any;
+    private callAssistant: any;
 
-    constructor(config: { apiKey: string, endpoint?: string, isAzure: boolean }) {
+    constructor(config: { apiKey: string, endpoint?: string, isAzure: boolean, azureApiKey?: string, azureEndpoint?: string, azureDeployment?: string }) {
         this.isAzure = config.isAzure;
         if (this.isAzure) {
-            this.client = new AzureOpenAI({
-                api_key: config.apiKey,
-                endpoint: config.endpoint,
-            });
+            this.azureApiKey = config.azureApiKey;
+            this.azureEndpoint = config.azureEndpoint;
+            this.azureDeployment = config.azureDeployment;
         } else {
             this.client = new OpenAI({ apiKey: config.apiKey });
         }
     }
 
-    async listAssistants(): Promise<Assistant[]> {
-        if (this.isAzure) {
-            const assistants = await this.client.assistants.list({
-                order: "desc",
-                limit: 20,
-            });
-            return assistants.data;
+    async init() {
+        const { listAssistants, callAssistant } = await import('./agent.mjs');
+        this.listAssistantsFunc = listAssistants;
+        this.callAssistant = callAssistant;
+    }
+
+    async getAssistants(): Promise<Assistant[]> {
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);
+            return assistants.map((assistant: any) => ({
+                id: assistant.id,
+                name: assistant.name,
+            }));
         } else {
             const assistants = await this.client.beta.assistants.list({
                 order: "desc",
@@ -56,13 +65,9 @@ export class Wrapper {
 
     async getThreadId(assistantId: string): Promise<string> {
         if (this.isAzure) {
-            const threads = await this.client.threads.list(assistantId);
-            if (threads.data.length > 0) {
-                return threads.data[0].id;
-            } else {
-                const newThread = await this.client.threads.create(assistantId);
-                return newThread.id;
-            }
+            // Azure OpenAI doesn't have the concept of threads
+            // You can return a unique identifier or an empty string
+            return '';
         } else {
             const thread = await this.client.beta.threads.create();
             return thread.id;
@@ -76,34 +81,49 @@ export class Wrapper {
             throw new Error('Message content must be non-empty.');
         }
 
-        if (this.isAzure) {
-            await this.client.messages.create(threadId, messageBody);
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            await this.callAssistant(this.azureEndpoint, this.azureApiKey, threadId, messageBody.content, () => { });
         } else {
             await this.client.beta.threads.messages.create(threadId, messageBody);
         }
     }
 
     async createAndPollRun(threadId: string, assistantId: string): Promise<any> {
-        let run;
-        if (this.isAzure) {
-            run = await this.client.runs.create(threadId, { assistant_id: assistantId });
-            let status = run.status;
-            while (status !== 'completed' && status !== 'cancelled' && status !== 'expired' && status !== 'failed') {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                const updatedRun = await this.client.runs.retrieve(threadId, run.id);
-                status = updatedRun.status;
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            if (!assistantId) {
+                throw new Error("Assistant ID is required.");
             }
+
+            let runResponse = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', () => { });
+            if (runResponse && runResponse.status) {
+                do {
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    runResponse = await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', () => { });
+                } while (runResponse.status === "queued" || runResponse.status === "in_progress");
+            }
+            return runResponse;
         } else {
             await this.client.beta.threads.messages.create(threadId, { role: 'user', content: '' });
-            run = await this.client.beta.threads.runs.createAndPoll(threadId, { assistant_id: assistantId });
+            const run = await this.client.beta.threads.runs.createAndPoll(threadId, { assistant_id: assistantId });
+            return run;
         }
-        return run;
     }
 
-    async listMessages(threadId: string): Promise<any[]> {
-        if (this.isAzure) {
-            const messages = await this.client.messages.list(threadId);
-            return messages.data;
+    async listMessages(threadId: string, assistantId: string): Promise<any[]> {
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            if (!assistantId) {
+                throw new Error("Assistant ID is required.");
+            }
+
+            let messages: any[] = [];
+            await this.callAssistant(this.azureEndpoint, this.azureApiKey, assistantId, '', (err: any, status: string, data: any) => {
+                if (err) {
+                    console.error('Error retrieving messages:', err);
+                } else if (status === 'text returned') {
+                    messages.push({ role: 'assistant', content: data.value });
+                }
+            });
+            return messages;
         } else {
             const messages = await this.client.beta.threads.messages.list(threadId);
             return messages.data;
@@ -134,7 +154,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
                 if (newAssistantId) {
                     assistantId = newAssistantId;
-                    const assistants = await wrapper.listAssistants();
+                    const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
                         stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**. How can I assist you today?`);
@@ -176,15 +196,20 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.log('Run created and polled:', run);
 
-                const retrievedMessages = await wrapper.listMessages(threadId);
+                const retrievedMessages = await wrapper.listMessages(threadId, assistantId);
                 console.log('Retrieved messages:', retrievedMessages);
 
                 const lastMessage = retrievedMessages.find((message: any) => message.role === 'assistant');
                 if (lastMessage) {
-                    const content = lastMessage.content
-                        .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
-                        .map((part: any) => part.text.value)
-                        .join('');
+                    let content;
+                    if (Array.isArray(lastMessage.content)) {
+                        content = lastMessage.content
+                            .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
+                            .map((part: any) => part.text.value)
+                            .join('');
+                    } else {
+                        content = lastMessage.content;
+                    }
                     console.log('Assistant response content:', content);
                     stream.markdown(content);
                 }
@@ -198,7 +223,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
         return { metadata: { command: '' } };
     };
 
-    const gpt = vscode.chat.createChatParticipant('chat-sample.assistant', handler);
+    const gpt = vscode.chat.createChatParticipant('openai-assistant.chat', handler);
     gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpeg');
 
     context.subscriptions.push(
@@ -230,15 +255,20 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                     console.log('Run created and polled:', run);
 
-                    const retrievedMessages = await wrapper.listMessages(threadId);
+                    const retrievedMessages = await wrapper.listMessages(threadId, assistantId);
                     console.log('Retrieved messages:', retrievedMessages);
 
                     const lastMessage = retrievedMessages.find((message: any) => message.role === 'assistant');
                     if (lastMessage) {
-                        const content = lastMessage.content
-                            .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
-                            .map((part: any) => part.text.value)
-                            .join('');
+                        let content;
+                        if (Array.isArray(lastMessage.content)) {
+                            content = lastMessage.content
+                                .filter((part: any): part is TextContentBlock => part.type === 'text' && 'text' in part && 'value' in part.text)
+                                .map((part: any) => part.text.value)
+                                .join('');
+                        } else {
+                            content = lastMessage.content;
+                        }
                         console.log('Assistant response content:', content);
                         await textEditor.edit((edit) => {
                             const start = new vscode.Position(0, 0);

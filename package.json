@@ -57,7 +57,7 @@
         },
         "chatParticipants": [
             {
-                "id": "chat-sample.assistant",
+                "id": "openai-assistant.chat",
                 "fullName": "Assistant",
                 "name": "assistant",
                 "description": "Your OpenAI Assistant",
@@ -94,7 +94,7 @@
     "dependencies": {
         "openai": "^4.51.0",
         "@azure/openai": "^1.0.0-beta.12",
-        "@azure/openai-assistants": "^1.0.0-beta.3"
+        "@azure/openai-assistants": "^1.0.0-beta.5"
     },
     "devDependencies": {
         "@types/node": "^20.5.9",
