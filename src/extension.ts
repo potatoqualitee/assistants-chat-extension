@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Wrapper, registerChatParticipant } from './wrapper';
 import { promptForAssistant } from './assistantUtils';
 
-async function promptForApiKey(configuration: vscode.WorkspaceConfiguration): Promise<string | undefined> {
+async function promptForApiKey(configuration: vscode.WorkspaceConfiguration, context: vscode.ExtensionContext, model: string, assistantId: string | undefined): Promise<string | undefined> {
     const apiKey = await vscode.window.showInputBox({
         placeHolder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
         password: true,
@@ -11,6 +11,12 @@ async function promptForApiKey(configuration: vscode.WorkspaceConfiguration): Pr
     if (apiKey) {
         configuration.update('apiKey', apiKey, vscode.ConfigurationTarget.Global);
         console.log('API key updated successfully. You can now use the AI assistant.');
+        const wrapper = new Wrapper({
+            apiKey: apiKey,
+            isAzure: false,
+        });
+        await wrapper.init();
+        await registerChatParticipant(context, wrapper, model, assistantId, configuration);
         return apiKey;
     } else {
         vscode.window.showErrorMessage('No API key provided. Please set your API key to use the AI assistant.');
@@ -19,9 +25,9 @@ async function promptForApiKey(configuration: vscode.WorkspaceConfiguration): Pr
     return undefined;
 }
 
-async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfiguration): Promise<boolean> {
+async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfiguration, context: vscode.ExtensionContext, model: string, assistantId: string | undefined): Promise<boolean> {
     const azureApiKey = await vscode.window.showInputBox({
-        placeHolder: 'Azure OpenAI API Key',
+        placeHolder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
         password: true,
     });
 
@@ -53,7 +59,33 @@ async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfig
     configuration.update('azureOpenAIDeploymentName', azureDeployment, vscode.ConfigurationTarget.Global);
 
     console.log('Azure OpenAI configuration updated successfully. You can now use the AI assistant with Azure OpenAI.');
+
+    const wrapper = new Wrapper({
+        apiKey: azureApiKey,
+        endpoint: azureEndpoint,
+        isAzure: true,
+        azureApiKey,
+        azureEndpoint,
+        azureDeployment,
+    });
+    await wrapper.init();
+    await registerChatParticipant(context, wrapper, model, assistantId, configuration);
+
     return true;
+}
+
+async function promptForApiProvider(configuration: vscode.WorkspaceConfiguration, context: vscode.ExtensionContext, model: string, assistantId: string | undefined): Promise<void> {
+    const choice = await vscode.window.showInformationMessage(
+        'You need to enter an API key',
+        'OpenAI',
+        'Azure'
+    );
+
+    if (choice === 'OpenAI') {
+        await promptForApiKey(configuration, context, model, assistantId);
+    } else if (choice === 'Azure') {
+        await promptForAzureConfiguration(configuration, context, model, assistantId);
+    }
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -65,26 +97,18 @@ export async function activate(context: vscode.ExtensionContext) {
     let azureEndpoint: string = configuration.get<string>('azureOpenAIEndpoint', '')!;
     let azureDeployment: string = configuration.get<string>('azureOpenAIDeploymentName', '')!;
 
-    // New code to determine the API provider
-    let apiProvider = configuration.get<string>('apiProvider', 'auto');
-    if (apiProvider === 'auto') {
-        if (apiKey && azureApiKey) {
-            apiProvider = await promptForApiProvider();
-        } else if (apiKey) {
-            apiProvider = 'openai';
-        } else if (azureApiKey && azureEndpoint && azureDeployment) {
-            apiProvider = 'azure';
-        } else {
-            apiProvider = 'openai';  // Default to OpenAI if no keys are set
-        }
+    if (!apiKey && !azureApiKey) {
+        await promptForApiProvider(configuration, context, model, assistantId);
+        apiKey = configuration.get<string>('apiKey', '')!;
+        azureApiKey = configuration.get<string>('azureOpenAIApiKey', '')!;
+        azureEndpoint = configuration.get<string>('azureOpenAIEndpoint', '')!;
+        azureDeployment = configuration.get<string>('azureOpenAIDeploymentName', '')!;
     }
 
-    configuration.update('apiProvider', apiProvider, vscode.ConfigurationTarget.Global);
-
     const wrapper = new Wrapper({
-        apiKey: apiProvider === 'azure' ? azureApiKey : apiKey,
-        endpoint: apiProvider === 'azure' ? azureEndpoint : undefined,
-        isAzure: apiProvider === 'azure',
+        apiKey: apiKey || azureApiKey,
+        endpoint: azureEndpoint,
+        isAzure: !!azureApiKey,
         azureApiKey,
         azureEndpoint,
         azureDeployment,
@@ -111,45 +135,11 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.commands.registerCommand('assistantsChatExtension.setApiKey', async () => {
-            const newApiKey = await promptForApiKey(configuration);
-
-            if (newApiKey) {
-                configuration.update('apiKey', newApiKey, vscode.ConfigurationTarget.Global);
-                vscode.window.showInformationMessage('API key updated. Chat participant re-registered.');
-                const wrapper = new Wrapper({
-                    apiKey: newApiKey,
-                    isAzure: false,
-                });
-                await wrapper.init();
-                await registerChatParticipant(context, wrapper, model, assistantId, configuration);
-            }
+            await promptForApiKey(configuration, context, model, assistantId);
         }),
 
         vscode.commands.registerCommand('assistantsChatExtension.setAzureConfig', async () => {
-            const azureConfigured = await promptForAzureConfiguration(configuration);
-
-            if (azureConfigured) {
-                azureApiKey = configuration.get<string>('azureOpenAIApiKey', '')!;
-                azureEndpoint = configuration.get<string>('azureOpenAIEndpoint', '')!;
-                azureDeployment = configuration.get<string>('azureOpenAIDeploymentName', '')!;
-                const wrapper = new Wrapper({
-                    apiKey: azureApiKey,
-                    endpoint: azureEndpoint,
-                    isAzure: true,
-                    azureApiKey,
-                    azureEndpoint,
-                    azureDeployment,
-                });
-                await wrapper.init();
-                vscode.window.showInformationMessage('Azure OpenAI configuration updated. Chat participant re-registered.');
-                await registerChatParticipant(context, wrapper, model, assistantId, configuration);
-            }
-        }),
-
-        vscode.commands.registerCommand('assistantsChatExtension.selectApiProvider', async () => {
-            const newProvider = await promptForApiProvider();
-            configuration.update('apiProvider', newProvider, vscode.ConfigurationTarget.Global);
-            vscode.window.showInformationMessage(`API provider set to ${newProvider}. Please reload the window for changes to take effect.`);
+            await promptForAzureConfiguration(configuration, context, model, assistantId);
         }),
 
         vscode.workspace.onDidChangeConfiguration(async (event) => {
@@ -186,14 +176,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
-}
-
-async function promptForApiProvider(): Promise<string> {
-    const choice = await vscode.window.showQuickPick(
-        ['OpenAI', 'Azure OpenAI'],
-        { placeHolder: 'Select API provider' }
-    );
-    return choice === 'Azure OpenAI' ? 'azure' : 'openai';
 }
 
 export function deactivate() { }
