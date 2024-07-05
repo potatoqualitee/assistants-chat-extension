@@ -55,6 +55,7 @@ The Assistants Chat Extension provides the following settings to customize your 
 |-----------------------------------------|-------------------------------------------------------------------------|
 | `assistantsChatExtension.apiKey`            | Your OpenAI API key for accessing the language models.                  |
 | `assistantsChatExtension.model`             | The OpenAI language model to use for the chat extension. Default is gpt-3.5-turbo.               |
+| `assistantsChatExtension.apiProvider`        | Select the API provider to use. 'auto' will choose based on available API keys. Options: 'auto', 'openai', 'azure'. |
 | `assistantsChatExtension.azureOpenAIApiKey`   | Your Azure OpenAI API key for accessing the language models.            |
 | `assistantsChatExtension.azureOpenAIEndpoint` | The endpoint URL for your Azure OpenAI resource.                        |
 | `assistantsChatExtension.azureOpenAIDeploymentName` | The deployment name for the Azure OpenAI model.                   |
