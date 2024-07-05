@@ -88,6 +88,17 @@ async function promptForApiProvider(configuration: vscode.WorkspaceConfiguration
         await promptForAzureConfiguration(configuration, context, model, assistantId);
         configuration.update('apiProvider', 'azure', vscode.ConfigurationTarget.Global);
     }
+
+    // Prompt user to reload VS Code
+    const reloadChoice = await vscode.window.showInformationMessage(
+        'VS Code needs to reload for the API provider change to take effect. Would you like to reload now?',
+        'Reload',
+        'Later'
+    );
+
+    if (reloadChoice === 'Reload') {
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -149,14 +160,25 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeConfiguration(async (event) => {
-            if (event.affectsConfiguration('assistantsChatExtension.apiProvider') ||
-                event.affectsConfiguration('assistantsChatExtension.apiKey') ||
+            if (event.affectsConfiguration('assistantsChatExtension.apiProvider')) {
+                const reloadChoice = await vscode.window.showInformationMessage(
+                    'API provider has been changed. VS Code needs to reload for this change to take effect. Would you like to reload now?',
+                    'Reload',
+                    'Later'
+                );
+
+                if (reloadChoice === 'Reload') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                } else {
+                    vscode.window.showInformationMessage('Please remember to reload VS Code for the API provider change to take effect.');
+                }
+            } else if (event.affectsConfiguration('assistantsChatExtension.apiKey') ||
                 event.affectsConfiguration('assistantsChatExtension.azureOpenAIApiKey') ||
                 event.affectsConfiguration('assistantsChatExtension.azureOpenAIEndpoint') ||
                 event.affectsConfiguration('assistantsChatExtension.azureOpenAIDeploymentName')) {
 
                 const apiProvider = configuration.get<string>('apiProvider', 'auto');
-                const isAzure = apiProvider === 'azure' || (apiProvider === 'auto' && !!azureApiKey); // Ensure boolean
+                const isAzure = apiProvider === 'azure' || (apiProvider === 'auto' && !!azureApiKey);
                 const apiKeyToUse = isAzure ? azureApiKey : configuration.get<string>('apiKey', '');
 
                 const wrapper = new Wrapper({
