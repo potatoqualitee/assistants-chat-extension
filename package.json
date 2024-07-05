@@ -17,7 +17,7 @@
                 "assistantsChatExtension.apiKey": {
                     "type": "string",
                     "default": "",
-                    "description": "API key for accessing AI services."
+                    "description": "API key for accessing OpenAI services."
                 },
                 "assistantsChatExtension.model": {
                     "type": "string",
@@ -26,13 +26,48 @@
                         "gpt-4"
                     ],
                     "default": "gpt-3.5-turbo",
-                    "description": "The model that Copilot will use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                },
+                "assistantsChatExtension.apiProvider": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "openai",
+                        "azure"
+                    ],
+                    "default": "auto",
+                    "description": "Select the API provider to use. 'auto' will choose based on available API keys."
+                },
+                "assistantsChatExtension.azureOpenAIApiKey": {
+                    "type": "string",
+                    "default": "",
+                    "description": "API key for accessing Azure OpenAI services.",
+                    "examples": [
+                        "0123456789abcdef0123456789abcdef"
+                    ]
+                },
+                "assistantsChatExtension.azureOpenAIEndpoint": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Endpoint URL for Azure OpenAI services.",
+                    "examples": [
+                        "https://your-resource-name.openai.azure.com"
+                    ]
+                },
+                "assistantsChatExtension.azureOpenAIDeploymentName": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Deployment name for the Azure OpenAI model.",
+                    "examples": [
+                        "france-gpt-35-turbo",
+                        "hr-gpt4"
+                    ]
                 }
             }
         },
         "chatParticipants": [
             {
-                "id": "chat-sample.assistant",
+                "id": "openai-assistant.chat",
                 "fullName": "Assistant",
                 "name": "assistant",
                 "description": "Your OpenAI Assistant",
@@ -57,6 +92,10 @@
             {
                 "command": "assistantsChatExtension.selectAssistant",
                 "title": "AI Assistant: Select Assistant"
+            },
+            {
+                "command": "assistantsChatExtension.selectApiProvider",
+                "title": "AI Assistant: Select API Provider"
             }
         ]
     },
@@ -67,7 +106,9 @@
         "watch": "tsc -watch -p ./"
     },
     "dependencies": {
-        "openai": "^4.51.0"
+        "openai": "^4.51.0",
+        "@azure/openai": "^1.0.0-beta.12",
+        "@azure/openai-assistants": "^1.0.0-beta.5"
     },
     "devDependencies": {
         "@types/node": "^20.5.9",

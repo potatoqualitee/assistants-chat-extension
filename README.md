@@ -5,9 +5,9 @@ The Assistants Chat Extension (`@assistant`) integrates OpenAI's language models
 > [!NOTE]
 > The Assistants Chat Extension is currently in limited public beta, accessible by invitation only.
 
-The repository is not just for providing feedback but also for helping developers create their own customized assistants using the OpenAI API. You can use this repository to report issues, submit feature requests, and access comprehensive documentation.
+The repository is not just for providing feedback but also for helping developers create their own customized assistants using the OpenAI API or Azure OpenAI Service. You can use this repository to report issues, submit feature requests, and access comprehensive documentation.
 
-This extension leverages OpenAI's Assistants API, which allows you to build AI assistants tailored to your specific needs. Each assistant can be configured with custom instructions and can utilize various tools such as Code Interpreter, File Search, and Function calling to assist with your coding tasks. By integrating these capabilities, the Assistants Chat Extension enables developers to implement features like context-aware responses about project details, such as the latest version of a tool or library, helping streamline the development process.
+This extension leverages OpenAI's Assistants API and Azure OpenAI Service, which allow you to build AI assistants tailored to your specific needs. Each assistant can be configured with custom instructions and can utilize various tools such as Code Interpreter, File Search, and Function calling to assist with your coding tasks. By integrating these capabilities, the Assistants Chat Extension enables developers to implement features like context-aware responses about project details, such as the latest version of a tool or library, helping streamline the development process.
 
 ![VSCode Assistant Example](images/updated.png)
 
@@ -15,20 +15,24 @@ This extension leverages OpenAI's Assistants API, which allows you to build AI a
 
 1. **Real-time Suggestions**: Get context-aware code completions and suggestions in VS Code, making your coding experience smoother and more efficient.
 2. **Bug Fixes and Guidance**: Copilot Chat can identify bugs and suggest fixes based on your codebase and external resources, saving you time and effort.
-3. **Uninterrupted Workflow**: With GitHub Copilot Chat and OpenAI working together, you can stay focused on building your project without constantly switching between tools.
+3. **Uninterrupted Workflow**: With GitHub Copilot Chat and OpenAI or Azure OpenAI working together, you can stay focused on building your project without constantly switching between tools.
 4. **Personalized Suggestions**: The assistant learns your coding style and preferences, making the suggestions more relevant and accurate for your specific needs.
 
 ## Getting Started
 
-1. **Set up your OpenAI API key**:
-   - **Create an OpenAI account**: Visit [OpenAI's website](https://www.openai.com) and sign up for an account if you don't have one.
-   - **Obtain your API key**: Once your account is set up, navigate to the API section to generate a new API key. Copy this key to use it in the next steps.
+1. **Set up your OpenAI or Azure OpenAI API key**:
+   - **OpenAI**:
+     - **Create an OpenAI account**: Visit [OpenAI's website](https://www.openai.com) and sign up for an account if you don't have one.
+     - **Obtain your API key**: Once your account is set up, navigate to the API section to generate a new API key. Copy this key to use it in the next steps.
+   - **Azure OpenAI**:
+     - **Create an Azure account**: If you don't have an Azure account, sign up at [Azure's website](https://azure.microsoft.com).
+     - **Create an Azure OpenAI resource**: Follow the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource) to create an Azure OpenAI resource and obtain the API key and endpoint.
    - **Add the API key to the extension settings in VS Code**: 
      - Open Visual Studio Code Insiders.
      - Go to the settings by clicking on the gear icon in the lower left corner and selecting "Settings".
      - In the search bar, type "Assistants Chat Extension".
-     - Find the setting for `assistantsChatExtension.apiKey`.
-     - Paste your API key into the field and save the settings.
+     - Find the setting for `assistantsChatExtension.apiKey` (OpenAI) or `assistantsChatExtension.azureOpenAIApiKey` and `assistantsChatExtension.azureOpenAIEndpoint` (Azure OpenAI).
+     - Paste your API key (and endpoint for Azure OpenAI) into the appropriate field(s) and save the settings.
 
 2. **Choose an Assistant**:
    - **Open the Copilot Chat interface**: Launch Visual Studio Code Insiders and ensure that the GitHub Copilot Chat extension is installed and active.
@@ -47,10 +51,14 @@ This extension leverages OpenAI's Assistants API, which allows you to build AI a
 
 The Assistants Chat Extension provides the following settings to customize your experience:
 
-| Setting                       | Description                                                           | Default Value    |
-|-------------------------------|-----------------------------------------------------------------------|------------------|
-| `assistantsChatExtension.apiKey`  | Your OpenAI API key for accessing the language models.                | `""`             |
-| `assistantsChatExtension.model`   | The OpenAI language model to use for the chat extension.              | `"gpt-3.5-turbo"` |
+| Setting                                 | Description                                                             |
+|-----------------------------------------|-------------------------------------------------------------------------|
+| `assistantsChatExtension.apiKey`            | Your OpenAI API key for accessing the language models.                  |
+| `assistantsChatExtension.model`             | The OpenAI language model to use for the chat extension. Default is gpt-3.5-turbo.               |
+| `assistantsChatExtension.apiProvider`        | Select the API provider to use. 'auto' will choose based on available API keys. Options: 'auto', 'openai', 'azure'. |
+| `assistantsChatExtension.azureOpenAIApiKey`   | Your Azure OpenAI API key for accessing the language models.            |
+| `assistantsChatExtension.azureOpenAIEndpoint` | The endpoint URL for your Azure OpenAI resource.                        |
+| `assistantsChatExtension.azureOpenAIDeploymentName` | The deployment name for the Azure OpenAI model.                   |
 
 You can modify these settings by going to the GitHub Copilot Chat settings and searching for "Assistants Chat Extension".
 
@@ -118,3 +126,4 @@ Contributions to the Assistants Chat Extension are welcome! If you encounter any
 * [VS Code Extension Samples - Chat Example](https://github.com/microsoft/vscode-extension-samples/tree/main/chat-sample)
 * [Language Model API](https://code.visualstudio.com/api/extension-guides/language-model)
 * [Prompt Builder](https://www.npmjs.com/package/@vscode/prompt-tsx)
+* [Azure OpenAI Documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/)
