@@ -30,6 +30,7 @@ export class Wrapper {
     private listAssistantsFunc: any;
     private callAssistantFunc: any;
 
+    // wrapper.ts constructor
     constructor(config: {
         apiKey: string,
         endpoint?: string,
@@ -40,9 +41,9 @@ export class Wrapper {
     }) {
         this.isAzure = config.isAzure;
         if (this.isAzure) {
-            this.azureApiKey = config.azureApiKey;
-            this.azureEndpoint = config.azureEndpoint;
-            this.azureDeployment = config.azureDeployment;
+            this.azureApiKey = config.azureApiKey!;
+            this.azureEndpoint = config.azureEndpoint!;
+            this.azureDeployment = config.azureDeployment!;
         } else {
             this.openaiClient = new OpenAI({ apiKey: config.apiKey });
         }

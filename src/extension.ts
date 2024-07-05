@@ -83,8 +83,10 @@ async function promptForApiProvider(configuration: vscode.WorkspaceConfiguration
 
     if (choice === 'OpenAI') {
         await promptForApiKey(configuration, context, model, assistantId);
+        configuration.update('apiProvider', 'openai', vscode.ConfigurationTarget.Global);
     } else if (choice === 'Azure') {
         await promptForAzureConfiguration(configuration, context, model, assistantId);
+        configuration.update('apiProvider', 'azure', vscode.ConfigurationTarget.Global);
     }
 }
 
@@ -105,13 +107,17 @@ export async function activate(context: vscode.ExtensionContext) {
         azureDeployment = configuration.get<string>('azureOpenAIDeploymentName', '')!;
     }
 
+    const apiProvider = configuration.get<string>('apiProvider', 'auto');
+    const isAzure = apiProvider === 'azure' || (apiProvider === 'auto' && !!azureApiKey); // Ensure boolean
+    const apiKeyToUse = isAzure ? azureApiKey : apiKey;
+
     const wrapper = new Wrapper({
-        apiKey: apiKey || azureApiKey,
-        endpoint: azureEndpoint,
-        isAzure: !!azureApiKey,
-        azureApiKey,
-        azureEndpoint,
-        azureDeployment,
+        apiKey: apiKeyToUse!,
+        endpoint: isAzure ? azureEndpoint! : undefined,
+        isAzure,
+        azureApiKey: azureApiKey || undefined,
+        azureEndpoint: azureEndpoint || undefined,
+        azureDeployment: azureDeployment || undefined,
     });
 
     await wrapper.init();
@@ -143,36 +149,27 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeConfiguration(async (event) => {
-            if (event.affectsConfiguration('assistantsChatExtension.apiKey')) {
-                const newApiKey = configuration.get<string>('apiKey', '');
-                if (newApiKey) {
-                    const wrapper = new Wrapper({
-                        apiKey: newApiKey,
-                        isAzure: false,
-                    });
-                    await wrapper.init();
-                    await registerChatParticipant(context, wrapper, model, assistantId, configuration);
-                    vscode.window.showInformationMessage('API key updated. Chat participant re-registered.');
-                }
-            } else if (event.affectsConfiguration('assistantsChatExtension.azureOpenAIApiKey') ||
+            if (event.affectsConfiguration('assistantsChatExtension.apiProvider') ||
+                event.affectsConfiguration('assistantsChatExtension.apiKey') ||
+                event.affectsConfiguration('assistantsChatExtension.azureOpenAIApiKey') ||
                 event.affectsConfiguration('assistantsChatExtension.azureOpenAIEndpoint') ||
                 event.affectsConfiguration('assistantsChatExtension.azureOpenAIDeploymentName')) {
-                azureApiKey = configuration.get<string>('azureOpenAIApiKey', '')!;
-                azureEndpoint = configuration.get<string>('azureOpenAIEndpoint', '')!;
-                azureDeployment = configuration.get<string>('azureOpenAIDeploymentName', '')!;
-                if (azureApiKey && azureEndpoint && azureDeployment) {
-                    const wrapper = new Wrapper({
-                        apiKey: azureApiKey,
-                        endpoint: azureEndpoint,
-                        isAzure: true,
-                        azureApiKey,
-                        azureEndpoint,
-                        azureDeployment,
-                    });
-                    await wrapper.init();
-                    await registerChatParticipant(context, wrapper, model, assistantId, configuration);
-                    vscode.window.showInformationMessage('Azure OpenAI configuration updated. Chat participant re-registered.');
-                }
+
+                const apiProvider = configuration.get<string>('apiProvider', 'auto');
+                const isAzure = apiProvider === 'azure' || (apiProvider === 'auto' && !!azureApiKey); // Ensure boolean
+                const apiKeyToUse = isAzure ? azureApiKey : configuration.get<string>('apiKey', '');
+
+                const wrapper = new Wrapper({
+                    apiKey: apiKeyToUse!,
+                    endpoint: isAzure ? azureEndpoint! : undefined,
+                    isAzure,
+                    azureApiKey: azureApiKey || undefined,
+                    azureEndpoint: azureEndpoint || undefined,
+                    azureDeployment: azureDeployment || undefined,
+                });
+                await wrapper.init();
+                await registerChatParticipant(context, wrapper, model, assistantId, configuration);
+                vscode.window.showInformationMessage('Configuration updated. Chat participant re-registered.');
             }
         })
     );
