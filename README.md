@@ -58,7 +58,6 @@ The Assistants Chat Extension provides the following settings to customize your 
 | `assistantsChatExtension.apiProvider`        | Select the API provider to use. 'auto' will choose based on available API keys. Options: 'auto', 'openai', 'azure'. |
 | `assistantsChatExtension.azureOpenAIApiKey`   | Your Azure OpenAI API key for accessing the language models.            |
 | `assistantsChatExtension.azureOpenAIEndpoint` | The endpoint URL for your Azure OpenAI resource.                        |
-| `assistantsChatExtension.azureOpenAIDeploymentName` | The deployment name for the Azure OpenAI model.                   |
 
 You can modify these settings by going to the GitHub Copilot Chat settings and searching for "Assistants Chat Extension".
 

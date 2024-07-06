@@ -42,18 +42,8 @@ async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfig
         return false;
     }
 
-    const azureDeployment = await vscode.window.showInputBox({
-        placeHolder: 'Azure OpenAI Deployment Name',
-    });
-
-    if (!azureDeployment) {
-        vscode.window.showErrorMessage('No Azure OpenAI deployment name provided. Please set your deployment name to use the AI assistant.');
-        return false;
-    }
-
     await configuration.update('azureOpenAIApiKey', azureApiKey, vscode.ConfigurationTarget.Global);
     await configuration.update('azureOpenAIEndpoint', azureEndpoint, vscode.ConfigurationTarget.Global);
-    await configuration.update('azureOpenAIDeploymentName', azureDeployment, vscode.ConfigurationTarget.Global);
 
     console.log('Azure OpenAI configuration updated successfully.');
     return true;
@@ -80,15 +70,13 @@ async function createWrapper(configuration: vscode.WorkspaceConfiguration): Prom
     const isAzure = apiProvider === 'azure' || (apiProvider === 'auto' && !!configuration.get<string>('azureOpenAIApiKey'));
     const apiKey = isAzure ? configuration.get<string>('azureOpenAIApiKey') : configuration.get<string>('apiKey');
     const azureEndpoint = configuration.get<string>('azureOpenAIEndpoint');
-    const azureDeployment = configuration.get<string>('azureOpenAIDeploymentName');
 
     const wrapper = new Wrapper({
         apiKey: apiKey!,
         endpoint: isAzure ? azureEndpoint! : undefined,
         isAzure,
         azureApiKey: isAzure ? apiKey : undefined,
-        azureEndpoint: azureEndpoint || undefined,
-        azureDeployment: azureDeployment || undefined,
+        azureEndpoint: azureEndpoint || undefined
     });
     await wrapper.init();
     return wrapper;
