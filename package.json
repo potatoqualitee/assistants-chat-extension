@@ -53,15 +53,6 @@
                     "examples": [
                         "https://your-resource-name.openai.azure.com"
                     ]
-                },
-                "assistantsChatExtension.azureOpenAIDeploymentName": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Deployment name for the Azure OpenAI model.",
-                    "examples": [
-                        "france-gpt-35-turbo",
-                        "hr-gpt4"
-                    ]
                 }
             }
         },
