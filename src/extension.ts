@@ -160,18 +160,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     const newProvider = newConfiguration.get<string>('apiProvider');
 
                     if (oldProvider !== newProvider && chatParticipantCreated) {
-                        const choice = await vscode.window.showInformationMessage(
-                            'The API provider has changed. A reload is required for this change to take effect.',
-                            'Reload Now',
-                            'Later'
-                        );
-
-                        if (choice === 'Reload Now') {
-                            vscode.commands.executeCommand('workbench.action.reloadWindow');
-                            return;
-                        } else {
-                            vscode.window.showWarningMessage('Please reload the window manually for the API provider change to take effect.');
-                        }
+                        // Execute the /change command
+                        vscode.commands.executeCommand('workbench.action.chat.execute', '/change');
                     }
                 }
 
