@@ -9,7 +9,7 @@ The repository is not just for providing feedback but also for helping developer
 
 This extension leverages OpenAI's Assistants API and Azure OpenAI Service, which allow you to build AI assistants tailored to your specific needs. Each assistant can be configured with custom instructions and can utilize various tools such as Code Interpreter, File Search, and Function calling to assist with your coding tasks. By integrating these capabilities, the Assistants Chat Extension enables developers to implement features like context-aware responses about project details, such as the latest version of a tool or library, helping streamline the development process.
 
-![VSCode Assistant Example](images/updated.png)
+![VSCode Assistant Example](https://github.com/potatoqualitee/assistants-chat-extension/raw/main/images/updated.png)
 
 ## Benefits of Integration with GitHub Copilot Chat
 
@@ -113,7 +113,7 @@ For most users, **Copilot GPT-4 + Assistants AI GPT-3.5-Turbo** offers a good ba
 
 Here's a screenshot for reference:
 
-![OpenAI API Playground Assistant Setup](images/playground.png)
+![OpenAI API Playground Assistant Setup](https://github.com/potatoqualitee/assistants-chat-extension/raw/main/images/playground.png)
 
 ## Contributing
 

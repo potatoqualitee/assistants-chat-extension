@@ -131,7 +131,7 @@ export class Wrapper {
     }
 }
 
-export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration) {
+export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
     // Generate or retrieve a userId
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
     if (!userId) {
@@ -191,7 +191,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 stream.markdown("There was an error processing your request. Please try again or select a different assistant.");
             }
         } catch (err) {
-            handleError(err, stream, configuration, context);
+            handleError(err, stream);
         }
 
         return { metadata: { command: '' } };
@@ -201,9 +201,11 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpeg');
 
     context.subscriptions.push(gpt);
+
+    return gpt;
 }
 
-function handleError(err: any, stream?: vscode.ChatResponseStream, configuration?: vscode.WorkspaceConfiguration, context?: vscode.ExtensionContext): void {
+function handleError(err: any, stream?: vscode.ChatResponseStream): void {
     if (err instanceof vscode.LanguageModelError) {
         console.log(err.message, err.code, err.cause);
         if (err.cause instanceof Error && err.cause.message.includes('Incorrect API key provided')) {
