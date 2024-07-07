@@ -54,8 +54,12 @@ export class Wrapper {
         }
     }
 
-    async createAndPollRun(assistantId: string, question: string, userId: string): Promise<any> {
+    async createAndPollRun(assistantId: string | undefined, question: string, userId: string): Promise<any> {
         console.log('createAndPollRun called with:', { assistantId, question, userId });
+
+        if (!assistantId) {
+            throw new Error("Assistant ID is required");
+        }
 
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             try {

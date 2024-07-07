@@ -1,6 +1,7 @@
 // assistantUtils.ts
 import * as vscode from 'vscode';
-import { Wrapper, Assistant } from './wrapper';
+import { Wrapper } from './wrapper';
+import { Assistant } from './openai';
 
 export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
     if (stream) {
