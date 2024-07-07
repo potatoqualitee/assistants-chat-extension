@@ -33,19 +33,19 @@ export class OpenAIWrapper {
         try {
             let threadId = this.threadMap.get(userId);
             if (!threadId) {
-                console.log('Creating a new thread for user:', userId);
+                console.debug('Creating a new thread for user:', userId);
                 const thread = await this.openaiClient.beta.threads.create();
                 threadId = thread.id;
                 this.threadMap.set(userId, threadId);
             } else {
-                console.log('Using existing thread for user:', userId);
+                console.debug('Using existing thread for user:', userId);
             }
 
             await this.openaiClient.beta.threads.messages.create(threadId, { role: 'user', content: question });
-            console.log('User message created with content:', question);
+            console.debug('User message created with content:', question);
 
             const run = await this.openaiClient.beta.threads.runs.create(threadId, { assistant_id: assistantId });
-            console.log('Run created:', run);
+            console.debug('Run created:', run);
 
             let completedRun;
             do {
@@ -53,7 +53,7 @@ export class OpenAIWrapper {
                 completedRun = await this.openaiClient.beta.threads.runs.retrieve(threadId, run.id);
             } while (completedRun.status === 'queued' || completedRun.status === 'in_progress');
 
-            console.log('Run completed:', completedRun);
+            console.debug('Run completed:', completedRun);
 
             if (completedRun.status === 'completed') {
                 const messages = await this.openaiClient.beta.threads.messages.list(threadId);

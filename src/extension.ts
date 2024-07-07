@@ -13,7 +13,7 @@ async function promptForApiKey(configuration: vscode.WorkspaceConfiguration): Pr
 
     if (apiKey) {
         await configuration.update('apiKey', apiKey, vscode.ConfigurationTarget.Global);
-        console.log('API key updated successfully.');
+        console.debug('API key updated successfully.');
         return apiKey;
     } else {
         vscode.window.showErrorMessage('No API key provided. Please set your API key to use the AI assistant.');
@@ -45,7 +45,7 @@ async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfig
     await configuration.update('azureOpenAIApiKey', azureApiKey, vscode.ConfigurationTarget.Global);
     await configuration.update('azureOpenAIEndpoint', azureEndpoint, vscode.ConfigurationTarget.Global);
 
-    console.log('Azure OpenAI configuration updated successfully.');
+    console.debug('Azure OpenAI configuration updated successfully.');
     return true;
 }
 
@@ -96,7 +96,7 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Activating Assistants Chat Extension');
+    console.debug('Activating Assistants Chat Extension');
 
     let configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
 
@@ -159,7 +159,7 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    console.log('Assistants Chat Extension activated');
+    console.debug('Assistants Chat Extension activated');
 }
 
 export function deactivate() {

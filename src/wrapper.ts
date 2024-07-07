@@ -55,7 +55,7 @@ export class Wrapper {
     }
 
     async createAndPollRun(assistantId: string | undefined, question: string, userId: string): Promise<any> {
-        console.log('createAndPollRun called with:', { assistantId, question, userId });
+        console.debug('createAndPollRun called with:', { assistantId, question, userId });
 
         if (!assistantId) {
             throw new Error("Assistant ID is required");
@@ -64,7 +64,7 @@ export class Wrapper {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             try {
                 const response = await this.callAssistantFunc(this.azureEndpoint, this.azureApiKey, assistantId, question, userId);
-                console.log('Response from callAssistant:', response);
+                console.debug('Response from callAssistant:', response);
                 return { content: response };
             } catch (error) {
                 console.error("Error in createAndPollRun for Azure:", error);
@@ -120,14 +120,14 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     return { metadata: { command: '' } };
                 }
 
-                console.log('User message:', userMessage);
+                console.debug('User message:', userMessage);
 
                 const run = await wrapper.createAndPollRun(assistantId, userMessage, userId);
 
-                console.log('Run created and polled:', run);
+                console.debug('Run created and polled:', run);
 
                 if (run && run.content) {
-                    console.log('Assistant response content:', run.content);
+                    console.debug('Assistant response content:', run.content);
                     stream.markdown(run.content);
                 } else {
                     console.error('No content in run response');
@@ -145,7 +145,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     };
 
     const gpt = vscode.chat.createChatParticipant('openai-assistant.chat', handler);
-    gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpeg');
+    gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpg');
 
     context.subscriptions.push(gpt);
 
@@ -154,7 +154,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
 function handleError(err: any, stream?: vscode.ChatResponseStream): void {
     if (err instanceof vscode.LanguageModelError) {
-        console.log(err.message, err.code, err.cause);
+        console.debug(err.message, err.code, err.cause);
         if (err.cause instanceof Error && err.cause.message.includes('Incorrect API key provided')) {
             stream?.markdown('The provided API key is incorrect. Please enter a valid API key in the extension settings.');
             stream?.markdown('To set your API key, follow these steps:\n\n1. Open the VS Code Settings (File > Preferences > Settings).\n2. Search for "Assistants Chat Extension".\n3. Enter your valid API key in the "Assistants Chat Extension: Api Key" field.\n4. Save the settings file (Ctrl+S or File > Save).\n5. You can also enter your API key via the command palette using `assistantsChatExtension.setApiKey`.');
