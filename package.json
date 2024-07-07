@@ -3,7 +3,7 @@
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
     "version": "0.0.1",
-    "publisher": "potatoqualitee",
+    "publisher": "chrissylemaire",
     "categories": [
         "AI",
         "Chat"
@@ -96,6 +96,7 @@
         ]
     },
     "icon": "icon.png",
+    "pricing": "Free",
     "main": "./out/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run compile",
