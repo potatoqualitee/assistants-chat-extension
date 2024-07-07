@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import OpenAI from 'openai';
+import { Assistant, OpenAIWrapper } from './openai';
 import { promptForAssistant } from './assistantUtils';
 
 interface IGPTChatResult extends vscode.ChatResult {
@@ -8,28 +8,13 @@ interface IGPTChatResult extends vscode.ChatResult {
     };
 }
 
-interface TextContentBlock {
-    type: 'text';
-    text: {
-        value: string;
-        annotations: Array<any>;
-    };
-}
-
-export interface Assistant {
-    id: string;
-    name: string | null;
-}
-
 export class Wrapper {
-    private openaiClient: OpenAI | null = null;
+    private openaiWrapper: OpenAIWrapper | null = null;
     private isAzure: boolean;
     private azureApiKey?: string;
     private azureEndpoint?: string;
     private listAssistantsFunc: any;
     private callAssistantFunc: any;
-
-    private threadMap: Map<string, string> = new Map();
 
     constructor(config: {
         apiKey: string,
@@ -43,13 +28,13 @@ export class Wrapper {
             this.azureApiKey = config.azureApiKey;
             this.azureEndpoint = config.azureEndpoint;
         } else {
-            this.openaiClient = new OpenAI({ apiKey: config.apiKey });
+            this.openaiWrapper = new OpenAIWrapper(config.apiKey);
         }
     }
 
     async init() {
         if (this.isAzure) {
-            const { listAssistants, callAssistant } = await import('./agent.mjs');
+            const { listAssistants, callAssistant } = await import('./azure.mjs');
             this.listAssistantsFunc = listAssistants;
             this.callAssistantFunc = callAssistant;
         }
@@ -62,12 +47,8 @@ export class Wrapper {
                 id: assistant.id,
                 name: assistant.name,
             }));
-        } else if (this.openaiClient) {
-            const assistants = await this.openaiClient.beta.assistants.list({
-                order: "desc",
-                limit: 20,
-            });
-            return assistants.data;
+        } else if (this.openaiWrapper) {
+            return await this.openaiWrapper.listAssistants();
         } else {
             throw new Error("Neither Azure nor OpenAI client is properly initialized");
         }
@@ -85,53 +66,8 @@ export class Wrapper {
                 console.error("Error in createAndPollRun for Azure:", error);
                 throw error;
             }
-        } else if (this.openaiClient) {
-            try {
-                // Get or create a thread for this user
-                let threadId = this.threadMap.get(userId);
-                if (!threadId) {
-                    console.log('Creating a new thread for user:', userId);
-                    const thread = await this.openaiClient.beta.threads.create();
-                    threadId = thread.id;
-                    this.threadMap.set(userId, threadId);
-                } else {
-                    console.log('Using existing thread for user:', userId);
-                }
-
-                await this.openaiClient.beta.threads.messages.create(threadId, { role: 'user', content: question });
-                console.log('User message created with content:', question);
-
-                const run = await this.openaiClient.beta.threads.runs.create(threadId, { assistant_id: assistantId });
-                console.log('Run created:', run);
-
-                let completedRun;
-                do {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    completedRun = await this.openaiClient.beta.threads.runs.retrieve(threadId, run.id);
-                } while (completedRun.status === 'queued' || completedRun.status === 'in_progress');
-
-                console.log('Run completed:', completedRun);
-
-                if (completedRun.status === 'completed') {
-                    const messages = await this.openaiClient.beta.threads.messages.list(threadId);
-                    const assistantMessage = messages.data.find(msg => msg.role === 'assistant' && msg.run_id === run.id);
-
-                    if (assistantMessage && assistantMessage.content && Array.isArray(assistantMessage.content)) {
-                        const content = assistantMessage.content
-                            .filter((part: any): part is TextContentBlock => part.type === 'text')
-                            .map((part: TextContentBlock) => part.text.value)
-                            .join('');
-                        return { content };
-                    } else {
-                        throw new Error('Unexpected structure of assistant message');
-                    }
-                } else {
-                    throw new Error(`Run failed with status: ${completedRun.status}`);
-                }
-            } catch (error) {
-                console.error("Error in createAndPollRun for OpenAI:", error);
-                throw error;
-            }
+        } else if (this.openaiWrapper) {
+            return await this.openaiWrapper.createAndPollRun(assistantId, question, userId);
         } else {
             throw new Error("Neither Azure nor OpenAI client is properly initialized");
         }
