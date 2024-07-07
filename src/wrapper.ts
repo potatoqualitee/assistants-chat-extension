@@ -147,7 +147,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     };
 
     const gpt = vscode.chat.createChatParticipant('openai-assistant.chat', handler);
-    gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'cat.jpg');
+    gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'icon.png');
 
     context.subscriptions.push(gpt);
 

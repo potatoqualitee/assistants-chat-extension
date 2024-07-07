@@ -95,7 +95,7 @@
             }
         ]
     },
-    "icon": "cat.jpg",
+    "icon": "icon.png",
     "main": "./out/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run compile",
