@@ -122,7 +122,9 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.debug('User message:', userMessage);
 
-                const run = await wrapper.createAndPollRun(assistantId, userMessage, userId);
+                // Ensure userId is a string
+                const safeUserId = userId || `default_user_${Date.now()}`;
+                const run = await wrapper.createAndPollRun(assistantId, userMessage, safeUserId);
 
                 console.debug('Run created and polled:', run);
 

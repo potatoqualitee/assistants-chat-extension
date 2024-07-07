@@ -149,7 +149,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
                     if (oldProvider !== newProvider && chatParticipantCreated) {
                         // Execute the /change command
-                        vscode.commands.executeCommand('workbench.action.chat.execute', '/change');
+                        // vscode.commands.executeCommand('workbench.action.chat.execute', '/change');
+                        await updateChatParticipant(context, newConfiguration);
                     }
                 }
 
