@@ -29,6 +29,8 @@ export class Wrapper {
     private listAssistantsFunc: any;
     private callAssistantFunc: any;
 
+    private threadMap: Map<string, string> = new Map();
+
     constructor(config: {
         apiKey: string,
         endpoint?: string,
@@ -85,25 +87,33 @@ export class Wrapper {
             }
         } else if (this.openaiClient) {
             try {
-                const thread = await this.openaiClient.beta.threads.create();
-                console.log('Thread created:', thread);
+                // Get or create a thread for this user
+                let threadId = this.threadMap.get(userId);
+                if (!threadId) {
+                    console.log('Creating a new thread for user:', userId);
+                    const thread = await this.openaiClient.beta.threads.create();
+                    threadId = thread.id;
+                    this.threadMap.set(userId, threadId);
+                } else {
+                    console.log('Using existing thread for user:', userId);
+                }
 
-                await this.openaiClient.beta.threads.messages.create(thread.id, { role: 'user', content: question });
+                await this.openaiClient.beta.threads.messages.create(threadId, { role: 'user', content: question });
                 console.log('User message created with content:', question);
 
-                const run = await this.openaiClient.beta.threads.runs.create(thread.id, { assistant_id: assistantId });
+                const run = await this.openaiClient.beta.threads.runs.create(threadId, { assistant_id: assistantId });
                 console.log('Run created:', run);
 
                 let completedRun;
                 do {
                     await new Promise(resolve => setTimeout(resolve, 1000));
-                    completedRun = await this.openaiClient.beta.threads.runs.retrieve(thread.id, run.id);
+                    completedRun = await this.openaiClient.beta.threads.runs.retrieve(threadId, run.id);
                 } while (completedRun.status === 'queued' || completedRun.status === 'in_progress');
 
                 console.log('Run completed:', completedRun);
 
                 if (completedRun.status === 'completed') {
-                    const messages = await this.openaiClient.beta.threads.messages.list(thread.id);
+                    const messages = await this.openaiClient.beta.threads.messages.list(threadId);
                     const assistantMessage = messages.data.find(msg => msg.role === 'assistant' && msg.run_id === run.id);
 
                     if (assistantMessage && assistantMessage.content && Array.isArray(assistantMessage.content)) {
