@@ -51,7 +51,7 @@ async function promptForAzureConfiguration(configuration: vscode.WorkspaceConfig
 
 async function promptForApiProvider(configuration: vscode.WorkspaceConfiguration): Promise<void> {
     const choice = await vscode.window.showInformationMessage(
-        'You need to enter an API key',
+        'You must provide an API key to use the AI assistant. Would you like to use OpenAI or Azure OpenAI? Make sure you have your key ready before making a selection. Otherwise, you can add it later in the settings.',
         'OpenAI',
         'Azure'
     );

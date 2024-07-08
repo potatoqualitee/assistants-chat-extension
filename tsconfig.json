@@ -7,14 +7,21 @@
 			"dom"
 		],
 		"sourceMap": true,
-		"rootDir": "src",
+		"rootDir": "./",
 		"strict": true,
-		"outDir": "out",
 		"jsx": "react",
 		"jsxFactory": "vscpp",
 		"jsxFragmentFactory": "vscppf",
 		"allowJs": true,
 		"checkJs": false,
 		"moduleResolution": "Node16"
-	}
+	},
+	"include": [
+		"src",
+		"dist"
+	],
+	"exclude": [
+		"esbuild.js",
+		"out"
+	]
 }

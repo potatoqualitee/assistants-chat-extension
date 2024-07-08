@@ -2,7 +2,7 @@
     "name": "assistants-chat-extension",
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "publisher": "chrissylemaire",
     "categories": [
         "AI",
@@ -11,10 +11,14 @@
     "engines": {
         "vscode": "^1.90.0"
     },
+    "extensionDependencies": [
+        "github.copilot-chat"
+    ],
     "repository": {
         "type": "git",
         "url": "https://github.com/potatoqualitee/assistants-chat-extension"
     },
+    "activationEvents": [],
     "contributes": {
         "configuration": {
             "type": "object",
@@ -63,7 +67,8 @@
         },
         "chatParticipants": [
             {
-                "id": "openai-assistant.chat",
+                "id": "assistant",
+                "sampleRequest": "Ask the assistant how to change the OpenAI assistant",
                 "fullName": "Assistant",
                 "name": "assistant",
                 "description": "Your OpenAI Assistant",
@@ -97,20 +102,25 @@
     },
     "icon": "icon.png",
     "pricing": "Free",
-    "main": "./out/extension.js",
+    "main": "./dist/extension.js",
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./"
+        "compile": "npm run check-types && node esbuild.js",
+        "check-types": "tsc --noEmit",
+        "watch": "npm-run-all -p watch:*",
+        "watch:esbuild": "node esbuild.js --watch",
+        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+        "vscode:prepublish": "npm run package",
+        "package": "npm run check-types && node esbuild.js --production"
     },
     "dependencies": {
-        "openai": "^4.52.3",
         "@azure/openai": "^1.0.0-beta.12",
-        "@azure/openai-assistants": "^1.0.0-beta.5"
+        "@azure/openai-assistants": "^1.0.0-beta.5",
+        "openai": "^4.52.3"
     },
     "devDependencies": {
         "@types/node": "^20.5.9",
         "@types/vscode": "1.90.0",
+        "esbuild": "^0.23.0",
         "eslint": "^8.44.0",
         "run-script-os": "^1.1.6",
         "typescript": "^5.1.6"
