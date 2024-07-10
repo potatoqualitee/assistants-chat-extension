@@ -3,10 +3,6 @@ import { Wrapper } from './wrapper';
 import { Assistant } from './openai';
 
 export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
-    if (stream) {
-        stream.markdown('Please select an assistant.\n');
-    }
-
     const assistants = await wrapper.getAssistants();
 
     if (assistants.length === 0) {
@@ -36,6 +32,17 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
                 stream.markdown('No assistants available. Please create an assistant to proceed.');
             }
             return undefined;
+        }
+    } else if (assistants.length === 1) {
+        const assistant = assistants[0];
+        configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Global);
+        if (stream) {
+            stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}\n \n`);
+        }
+        return assistant.id;
+    } else {
+        if (stream) {
+            stream.markdown('Please select an assistant.\n');
         }
     }
 
