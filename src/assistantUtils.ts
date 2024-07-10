@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { Wrapper } from './wrapper';
 import { Assistant } from './openai';
 
+const newlineSpacing = `\n
+            
+            \n`;
+
 export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
     const assistants = await wrapper.getAssistants();
 
@@ -17,19 +21,19 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
                 const assistant = await wrapper.createSampleAssistant();
                 if (assistant) {
                     if (stream) {
-                        stream.markdown(`\nSample assistant "Beavis and Butthead" created successfully. You can now chat with it.\n`);
+                        stream.markdown(`Sample assistant "Beavis and Butthead" created successfully. You can now chat with it.${newlineSpacing}`);
                     }
                     return assistant.id;
                 }
             } catch (error) {
                 console.error("Error creating sample assistant:", error);
                 if (stream) {
-                    stream.markdown('\nAn error occurred while creating the sample assistant. Please create one manually using the web interface or PSOpenAI.');
+                    stream.markdown(`An error occurred while creating the sample assistant. Please create one manually using the web interface or PSOpenAI.${newlineSpacing}`);
                 }
             }
         } else {
             if (stream) {
-                stream.markdown('No assistants available. Please create an assistant to proceed.');
+                stream.markdown(`No assistants available. Please create an assistant to proceed.${newlineSpacing}`);
             }
             return undefined;
         }
@@ -37,12 +41,12 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         const assistant = assistants[0];
         configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Global);
         if (stream) {
-            stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}\n \n`);
+            stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
         }
         return assistant.id;
     } else {
         if (stream) {
-            stream.markdown('Please select an assistant.\n');
+            stream.markdown(`Please select an assistant.${newlineSpacing}`);
         }
     }
 
@@ -56,13 +60,13 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         if (selectedAssistant) {
             configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Global);
             if (stream) {
-                stream.markdown(`Selected assistant: ${selectedAssistantName}\n`);
+                stream.markdown(`Selected assistant: ${selectedAssistantName}${newlineSpacing}`);
             }
             return selectedAssistant.id;
         }
     } else {
         if (stream) {
-            stream.markdown('No assistant selected. Please select an assistant to proceed.');
+            stream.markdown(`No assistant selected. Please select an assistant to proceed.${newlineSpacing}`);
         }
     }
 
