@@ -85,26 +85,33 @@ async function createWrapper(configuration: vscode.WorkspaceConfiguration): Prom
 
 async function updateChatParticipant(context: vscode.ExtensionContext, configuration: vscode.WorkspaceConfiguration) {
     const model = configuration.get<string>('model', 'gpt-3.5-turbo');
-    const assistantId = configuration.get<string>('assistantId');
+    const assistantId = configuration.get<string>('assistantId', '');
     const wrapper = await createWrapper(configuration);
 
     if (chatParticipant) {
         chatParticipant.dispose();
     }
 
-    // Check if the saved assistant exists
-    const assistants = await wrapper.getAssistants();
-    const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
+    if (assistantId) {
+        // Check if the saved assistant exists
+        const assistants = await wrapper.getAssistants();
+        const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
 
-    if (!savedAssistant) {
-        // If the saved assistant doesn't exist, prompt the user to select a new one
+        if (!savedAssistant) {
+            // If the saved assistant doesn't exist, clear the assistantId setting
+            await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
+        } else {
+            // If the saved assistant exists, use it
+            vscode.window.showInformationMessage(`Using saved assistant: ${savedAssistant.name || savedAssistant.id}. You can use the /change command to change the assistant.`);
+        }
+    }
+
+    if (!assistantId) {
+        // If no assistant ID is saved or the saved assistant doesn't exist, prompt the user to select one
         const newAssistantId = await promptForAssistant(wrapper, configuration);
         if (newAssistantId) {
             await configuration.update('assistantId', newAssistantId, vscode.ConfigurationTarget.Workspace);
         }
-    } else {
-        // If the saved assistant exists, use it
-        vscode.window.showInformationMessage(`Using saved assistant: ${savedAssistant.name || savedAssistant.id}. You can use the /change command to change the assistant.`);
     }
 
     chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);

@@ -115,6 +115,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
                 if (newAssistantId) {
                     assistantId = newAssistantId;
+                    await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Workspace);
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
@@ -129,10 +130,8 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
             }
 
             if (!assistantId) {
-                assistantId = await promptForAssistant(wrapper, configuration, stream);
-                if (!assistantId) {
-                    return { metadata: { command: '' } };
-                }
+                stream.markdown('No assistant selected. Please use the `/change` command to select an assistant.');
+                return { metadata: { command: '' } };
             }
 
             if (model && assistantId) {
