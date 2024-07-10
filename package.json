@@ -83,6 +83,10 @@
                     {
                         "name": "change",
                         "description": "Ask how to change the OpenAI assistant"
+                    },
+                    {
+                        "name": "clearsaved",
+                        "description": "Clear the saved assistant ID"
                     }
                 ]
             }

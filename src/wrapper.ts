@@ -129,6 +129,13 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 return { metadata: { command: 'change' } };
             }
 
+            if (request.command === 'clearsaved') {
+                await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
+                assistantId = undefined;
+                stream.markdown('The saved assistant ID has been cleared. Please use the `/change` command to select a new assistant.');
+                return { metadata: { command: 'clearsaved' } };
+            }
+
             if (!assistantId) {
                 stream.markdown('No assistant selected. Please use the `/change` command to select an assistant.');
                 return { metadata: { command: '' } };
