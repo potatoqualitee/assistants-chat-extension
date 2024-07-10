@@ -2,6 +2,15 @@ import { AssistantsClient, AzureKeyCredential } from "@azure/openai-assistants";
 //import { setLogLevel } from "@azure/logger";
 //setLogLevel("info");
 
+export const createAzureAssistant = async (endpoint, apiKey, params) => {
+    const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
+    const assistant = await assistantsClient.createAssistant(params);
+    return {
+        id: assistant.id,
+        name: assistant.name,
+    };
+};
+
 export const listAssistants = async (endpoint, apiKey) => {
     const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
     const assistants = (await assistantsClient.listAssistants()).data.map(d => {
@@ -89,3 +98,43 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
         throw error;
     }
 };
+
+
+export async function createSampleAzureAssistant(azureEndpoint, azureApiKey) {
+    const defaultDeploymentNames = ["gpt-4o", "gpt-3.5-turbo", "gpt-4"];
+
+    for (const deploymentName of defaultDeploymentNames) {
+        try {
+            const assistant = await createAzureAssistant(azureEndpoint, azureApiKey, {
+                model: deploymentName,
+                name: "Beavis and Butthead",
+                instructions: "You answer questions in the style of Beavis and Butthead."
+            });
+            return assistant;
+        } catch (error) {
+            console.error(`Failed to create assistant with deployment name '${deploymentName}':`, error);
+        }
+    }
+
+    // Prompt the user to provide their deployment name
+    const customDeploymentName = await vscode.window.showInputBox({
+        prompt: "Please provide your Azure OpenAI deployment name:",
+        placeHolder: "Enter deployment name"
+    });
+
+    if (customDeploymentName) {
+        try {
+            const assistant = await createAzureAssistant(azureEndpoint, azureApiKey, {
+                model: customDeploymentName,
+                name: "Beavis and Butthead",
+                instructions: "You answer questions in the style of Beavis and Butthead."
+            });
+            return assistant;
+        } catch (error) {
+            console.error(`Failed to create assistant with custom deployment name '${customDeploymentName}':`, error);
+            vscode.window.showErrorMessage(`Failed to create assistant with custom deployment name '${customDeploymentName}'. Please check your deployment name and try again.`);
+        }
+    } else {
+        vscode.window.showWarningMessage("No deployment name provided. Sample assistant creation skipped.");
+    }
+}

@@ -32,6 +32,18 @@ export class Wrapper {
         }
     }
 
+    async createSampleAssistant(): Promise<Assistant | undefined> {
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            const { createSampleAzureAssistant } = await import('./azure.mjs');
+            return createSampleAzureAssistant(this.azureEndpoint, this.azureApiKey);
+        } else if (!this.isAzure && this.openaiWrapper) {
+            return this.openaiWrapper.createSampleAssistant();
+        } else {
+            console.error("Neither Azure nor OpenAI client is properly initialized");
+            return undefined;
+        }
+    }
+
     async init() {
         if (this.isAzure) {
             const { listAssistants, callAssistant } = await import('./azure.mjs');

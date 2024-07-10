@@ -21,6 +21,22 @@ export class OpenAIWrapper {
         this.openaiClient = new OpenAI({ apiKey });
     }
 
+    async createAssistant(params: { name: string, instructions: string, model: string }): Promise<Assistant> {
+        const assistant = await this.openaiClient.beta.assistants.create(params);
+        return {
+            id: assistant.id,
+            name: assistant.name,
+        };
+    }
+
+    async createSampleAssistant(): Promise<Assistant | undefined> {
+        return this.createAssistant({
+            name: "Beavis and Butthead",
+            instructions: "You answer questions in the style of Beavis and Butthead.",
+            model: "gpt-3.5-turbo"
+        });
+    }
+    
     async listAssistants(): Promise<Assistant[]> {
         const assistants = await this.openaiClient.beta.assistants.list({
             order: "desc",

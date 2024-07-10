@@ -1,4 +1,3 @@
-// assistantUtils.ts
 import * as vscode from 'vscode';
 import { Wrapper } from './wrapper';
 import { Assistant } from './openai';
@@ -9,6 +8,37 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     }
 
     const assistants = await wrapper.getAssistants();
+
+    if (assistants.length === 0) {
+        const choice = await vscode.window.showInformationMessage(
+            'No assistants found. Would you like to create a sample "Beavis and Butthead" assistant?',
+            'Yes',
+            'No'
+        );
+
+        if (choice === 'Yes') {
+            try {
+                const assistant = await wrapper.createSampleAssistant();
+                if (assistant) {
+                    if (stream) {
+                        stream.markdown(`\nSample assistant "Beavis and Butthead" created successfully. You can now chat with it.\n`);
+                    }
+                    return assistant.id;
+                }
+            } catch (error) {
+                console.error("Error creating sample assistant:", error);
+                if (stream) {
+                    stream.markdown('\nAn error occurred while creating the sample assistant. Please create one manually using the web interface or PSOpenAI.');
+                }
+            }
+        } else {
+            if (stream) {
+                stream.markdown('No assistants available. Please create an assistant to proceed.');
+            }
+            return undefined;
+        }
+    }
+
     const assistantNames = assistants.map((assistant: Assistant) => assistant.name).filter((name): name is string => name !== null);
     const selectedAssistantName = await vscode.window.showQuickPick(assistantNames, {
         placeHolder: 'Select an assistant',
