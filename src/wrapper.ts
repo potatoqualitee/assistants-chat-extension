@@ -52,6 +52,17 @@ export class Wrapper {
         }
     }
 
+    async retrieveAssistant(assistantId: string): Promise<Assistant | undefined> {
+        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
+            const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);
+            return assistants.find((assistant: any) => assistant.id === assistantId);
+        } else if (this.openaiWrapper) {
+            return await this.openaiWrapper.retrieveAssistant(assistantId);
+        } else {
+            throw new Error("Neither Azure nor OpenAI client is properly initialized");
+        }
+    }
+    
     async getAssistants(): Promise<Assistant[]> {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);

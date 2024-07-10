@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Wrapper, registerChatParticipant } from './wrapper';
 import { promptForAssistant } from './assistantUtils';
+import { Assistant } from './openai';
 
 let chatParticipant: vscode.ChatParticipant | undefined;
 let chatParticipantCreated = false;
@@ -89,6 +90,21 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
 
     if (chatParticipant) {
         chatParticipant.dispose();
+    }
+
+    // Check if the saved assistant exists
+    const assistants = await wrapper.getAssistants();
+    const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
+
+    if (!savedAssistant) {
+        // If the saved assistant doesn't exist, prompt the user to select a new one
+        const newAssistantId = await promptForAssistant(wrapper, configuration);
+        if (newAssistantId) {
+            await configuration.update('assistantId', newAssistantId, vscode.ConfigurationTarget.Workspace);
+        }
+    } else {
+        // If the saved assistant exists, use it
+        vscode.window.showInformationMessage(`Using saved assistant: ${savedAssistant.name || savedAssistant.id}. You can use the /change command to change the assistant.`);
     }
 
     chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);

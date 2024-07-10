@@ -37,6 +37,19 @@ export class OpenAIWrapper {
         });
     }
     
+    async retrieveAssistant(assistantId: string): Promise<Assistant | undefined> {
+        try {
+            const assistant = await this.openaiClient.beta.assistants.retrieve(assistantId);
+            return {
+                id: assistant.id,
+                name: assistant.name,
+            };
+        } catch (error) {
+            console.error("Error retrieving assistant:", error);
+            return undefined;
+        }
+    }
+    
     async listAssistants(): Promise<Assistant[]> {
         const assistants = await this.openaiClient.beta.assistants.list({
             order: "desc",

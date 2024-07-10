@@ -62,6 +62,11 @@
                     "examples": [
                         "https://your-resource-name.openai.azure.com"
                     ]
+                },
+                "assistantsChatExtension.assistantId": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The ID of the selected assistant."
                 }
             }
         },
