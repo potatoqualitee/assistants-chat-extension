@@ -157,9 +157,6 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
         if (selectedAssistant) {
             configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
-            if (stream) {
-                stream.markdown(`Selected assistant: ${selectedAssistantName}${newlineSpacing}`);
-            }
             return selectedAssistant.id;
         }
     } else {
