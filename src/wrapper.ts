@@ -137,7 +137,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         }
     } else if (assistants.length === 1) {
         const assistant = assistants[0];
-        configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Global);
+        configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
         if (stream) {
             stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
         }
@@ -156,7 +156,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     if (selectedAssistantName) {
         const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
         if (selectedAssistant) {
-            configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Global);
+            configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
             if (stream) {
                 stream.markdown(`Selected assistant: ${selectedAssistantName}${newlineSpacing}`);
             }
@@ -171,7 +171,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     return undefined;
 }
 
-export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
+export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
     // Generate or retrieve a userId
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
     if (!userId) {
@@ -186,14 +186,9 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
             // Check if this is the first message in the conversation
             if (isFirstMessage) {
                 isFirstMessage = false;
-                if (assistantId) {
-                    const assistant = await wrapper.retrieveAssistant(assistantId);
-                    if (assistant) {
-                        stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
-                    }
-                } else {
-                    stream.markdown(`No assistant selected. Please use the \`/change\` command to select an assistant.${newlineSpacing}`);
-                    return { metadata: { command: '' } };
+                const assistant = await wrapper.retrieveAssistant(assistantId);
+                if (assistant) {
+                    stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
                 }
             }
 
@@ -217,7 +212,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
             if (request.command === 'clearsaved') {
                 await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
-                assistantId = undefined;
+                assistantId = '';
                 stream.markdown(`The saved assistant ID has been cleared. Please use the \`/change\` command to select a new assistant.${newlineSpacing}`);
                 return { metadata: { command: 'clearsaved' } };
             }
