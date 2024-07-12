@@ -109,9 +109,14 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         if (newAssistantId) {
             assistantId = newAssistantId;
             await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+        } else {
+            // If the user didn't select an assistant, we can't proceed
+            vscode.window.showErrorMessage('No assistant selected. The chat participant cannot be created.');
+            return;
         }
     }
 
+    // At this point, we should definitely have an assistantId
     chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);
     chatParticipantCreated = true;
 
@@ -137,7 +142,6 @@ export async function activate(context: vscode.ExtensionContext) {
                 const wrapper = await createWrapper(configuration);
                 const assistantId = await promptForAssistant(wrapper, configuration);
                 if (assistantId) {
-                    await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Global);
                     // Reload the configuration after updating
                     configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
                     await updateChatParticipant(context, configuration);

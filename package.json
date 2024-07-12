@@ -24,20 +24,31 @@
             "type": "object",
             "properties": {
                 "assistantsChatExtension.apiKey": {
+                    "order": 1,
                     "type": "string",
                     "default": "",
                     "description": "API key for accessing OpenAI services."
                 },
-                "assistantsChatExtension.model": {
+                "assistantsChatExtension.azureOpenAIApiKey": {
+                    "order": 2,
                     "type": "string",
-                    "enum": [
-                        "gpt-3.5-turbo",
-                        "gpt-4"
-                    ],
-                    "default": "gpt-3.5-turbo",
-                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                    "default": "",
+                    "description": "API key for accessing Azure OpenAI services.",
+                    "examples": [
+                        "0123456789abcdef0123456789abcdef"
+                    ]
+                },
+                "assistantsChatExtension.azureOpenAIEndpoint": {
+                    "order": 3,
+                    "type": "string",
+                    "default": "",
+                    "description": "Endpoint URL for Azure OpenAI services.",
+                    "examples": [
+                        "https://your-resource-name.openai.azure.com"
+                    ]
                 },
                 "assistantsChatExtension.apiProvider": {
+                    "order": 4,
                     "type": "string",
                     "enum": [
                         "auto",
@@ -47,27 +58,23 @@
                     "default": "auto",
                     "description": "Select the API provider to use. 'auto' will choose based on available API keys."
                 },
-                "assistantsChatExtension.azureOpenAIApiKey": {
+                "assistantsChatExtension.model": {
+                    "order": 5,
                     "type": "string",
-                    "default": "",
-                    "description": "API key for accessing Azure OpenAI services.",
-                    "examples": [
-                        "0123456789abcdef0123456789abcdef"
-                    ]
-                },
-                "assistantsChatExtension.azureOpenAIEndpoint": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Endpoint URL for Azure OpenAI services.",
-                    "examples": [
-                        "https://your-resource-name.openai.azure.com"
-                    ]
+                    "enum": [
+                        "gpt-3.5-turbo",
+                        "gpt-4"
+                    ],
+                    "default": "gpt-3.5-turbo",
+                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
                 },
                 "assistantsChatExtension.assistantId": {
+                    "order": 6,
                     "type": "string",
                     "default": "",
-                    "description": "The ID of the selected assistant.",
-                    "configurationTarget": false
+                    "description": "The ID of the selected assistant. This is managed automatically by the extension and should not be modified manually.",
+                    "scope": "resource",
+                    "readonly": true
                 }
             }
         },
