@@ -2,7 +2,7 @@
     "name": "assistants-chat-extension",
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
-    "version": "0.0.3",
+    "version": "1.0.1",
     "publisher": "chrissylemaire",
     "categories": [
         "AI",
