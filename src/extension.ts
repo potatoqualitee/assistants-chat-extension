@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { Wrapper, registerChatParticipant } from './wrapper';
-import { promptForAssistant } from './assistantUtils';
+import { Wrapper, registerChatParticipant, promptForAssistant } from './wrapper';
 import { Assistant } from './openai';
 
 let chatParticipant: vscode.ChatParticipant | undefined;

@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import { Assistant, OpenAIWrapper } from './openai';
-import { promptForAssistant } from './assistantUtils';
 
 interface IGPTChatResult extends vscode.ChatResult {
     metadata: {
         command: string;
     };
 }
+
+export const newlineSpacing = `\n
+            
+            \n`;
 
 export class Wrapper {
     private openaiWrapper: OpenAIWrapper | null = null;
@@ -62,7 +65,7 @@ export class Wrapper {
             throw new Error("Neither Azure nor OpenAI client is properly initialized");
         }
     }
-    
+
     async getAssistants(): Promise<Assistant[]> {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);
@@ -101,6 +104,73 @@ export class Wrapper {
     }
 }
 
+export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
+    const assistants = await wrapper.getAssistants();
+
+    if (assistants.length === 0) {
+        const choice = await vscode.window.showInformationMessage(
+            'No assistants found. Would you like to create a sample "Beavis and Butthead" assistant?',
+            'Yes',
+            'No'
+        );
+
+        if (choice === 'Yes') {
+            try {
+                const assistant = await wrapper.createSampleAssistant();
+                if (assistant) {
+                    if (stream) {
+                        stream.markdown(`Sample assistant "Beavis and Butthead" created successfully. You can now chat with it.${newlineSpacing}`);
+                    }
+                    return assistant.id;
+                }
+            } catch (error) {
+                console.error("Error creating sample assistant:", error);
+                if (stream) {
+                    stream.markdown(`An error occurred while creating the sample assistant. Please create one manually using the web interface or PSOpenAI.${newlineSpacing}`);
+                }
+            }
+        } else {
+            if (stream) {
+                stream.markdown(`No assistants available. Please create an assistant to proceed.${newlineSpacing}`);
+            }
+            return undefined;
+        }
+    } else if (assistants.length === 1) {
+        const assistant = assistants[0];
+        configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Global);
+        if (stream) {
+            stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
+        }
+        return assistant.id;
+    } else {
+        if (stream) {
+            stream.markdown(`Please select an assistant.${newlineSpacing}`);
+        }
+    }
+
+    const assistantNames = assistants.map((assistant: Assistant) => assistant.name).filter((name): name is string => name !== null);
+    const selectedAssistantName = await vscode.window.showQuickPick(assistantNames, {
+        placeHolder: 'Select an assistant',
+    });
+
+    if (selectedAssistantName) {
+        const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
+        if (selectedAssistant) {
+            configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Global);
+            if (stream) {
+                stream.markdown(`Selected assistant: ${selectedAssistantName}${newlineSpacing}`);
+            }
+            return selectedAssistant.id;
+        }
+    } else {
+        if (stream) {
+            stream.markdown(`No assistant selected. Please select an assistant to proceed.${newlineSpacing}`);
+        }
+    }
+
+    return undefined;
+}
+
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string | undefined, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
     // Generate or retrieve a userId
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
@@ -119,10 +189,10 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 if (assistantId) {
                     const assistant = await wrapper.retrieveAssistant(assistantId);
                     if (assistant) {
-                        stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.`);
+                        stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
                     }
                 } else {
-                    stream.markdown('No assistant selected. Please use the `/change` command to select an assistant.');
+                    stream.markdown(`No assistant selected. Please use the \`/change\` command to select an assistant.${newlineSpacing}`);
                     return { metadata: { command: '' } };
                 }
             }
@@ -135,12 +205,12 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
-                        stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**. How can I assist you today?`);
+                        stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**. How can I assist you today?${newlineSpacing}`);
                     } else {
-                        stream.markdown(`You have switched to the assistant with ID: **${assistantId}**. How can I assist you today?`);
+                        stream.markdown(`You have switched to the assistant with ID: **${assistantId}**. How can I assist you today?${newlineSpacing}`);
                     }
                 } else {
-                    stream.markdown('No assistant selected. Please try again.');
+                    stream.markdown(`No assistant selected. Please try again.${newlineSpacing}`);
                 }
                 return { metadata: { command: 'change' } };
             }
@@ -148,12 +218,12 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
             if (request.command === 'clearsaved') {
                 await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
                 assistantId = undefined;
-                stream.markdown('The saved assistant ID has been cleared. Please use the `/change` command to select a new assistant.');
+                stream.markdown(`The saved assistant ID has been cleared. Please use the \`/change\` command to select a new assistant.${newlineSpacing}`);
                 return { metadata: { command: 'clearsaved' } };
             }
 
             if (!assistantId) {
-                stream.markdown('No assistant selected. Please use the `/change` command to select an assistant.');
+                stream.markdown(`No assistant selected. Please use the \`/change\` command to select an assistant.${newlineSpacing}`);
                 return { metadata: { command: '' } };
             }
 
@@ -161,7 +231,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 const userMessage = request.prompt;
 
                 if (userMessage.trim() === '') {
-                    stream.markdown('Please enter a non-empty message.');
+                    stream.markdown(`Please enter a non-empty message.${newlineSpacing}`);
                     return { metadata: { command: '' } };
                 }
 
@@ -175,14 +245,14 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 if (run && run.content) {
                     console.debug('Assistant response content:', run.content);
-                    stream.markdown(run.content);
+                    stream.markdown(`${run.content}${newlineSpacing}`);
                 } else {
                     console.error('No content in run response');
-                    stream.markdown("I'm sorry, but I couldn't generate a response. Please try again.");
+                    stream.markdown(`I'm sorry, but I couldn't generate a response. Please try again.${newlineSpacing}`);
                 }
             } else {
                 console.error('Model or Assistant ID is undefined. Unable to create a run.');
-                stream.markdown("There was an error processing your request. Please try again or select a different assistant.");
+                stream.markdown(`There was an error processing your request. Please try again or select a different assistant.${newlineSpacing}`);
             }
         } catch (err) {
             handleError(err, stream);
@@ -205,13 +275,13 @@ function handleError(err: any, stream?: vscode.ChatResponseStream): void {
     if (err instanceof vscode.LanguageModelError) {
         console.debug(err.message, err.code, err.cause);
         if (err.cause instanceof Error && err.cause.message.includes('Incorrect API key provided')) {
-            stream?.markdown('The provided API key is incorrect. Please enter a valid API key in the extension settings.');
-            stream?.markdown('To set your API key, follow these steps:\n\n1. Open the VS Code Settings (File > Preferences > Settings).\n2. Search for "Assistants Chat Extension".\n3. Enter your valid API key in the "Assistants Chat Extension: Api Key" field.\n4. Save the settings file (Ctrl+S or File > Save).\n5. You can also enter your API key via the command palette using `assistantsChatExtension.setApiKey`.');
+            stream?.markdown(`The provided API key is incorrect. Please enter a valid API key in the extension settings.${newlineSpacing}`);
+            stream?.markdown(`To set your API key, follow these steps:\n\n1. Open the VS Code Settings (File > Preferences > Settings).\n2. Search for "Assistants Chat Extension".\n3. Enter your valid API key in the "Assistants Chat Extension: Api Key" field.\n4. Save the settings file (Ctrl+S or File > Save).\n5. You can also enter your API key via the command palette using \`assistantsChatExtension.setApiKey\`.${newlineSpacing}`);
         } else {
-            stream?.markdown('An error occurred while processing your request. Please try again.');
+            stream?.markdown(`An error occurred while processing your request. Please try again.${newlineSpacing}`);
         }
     } else {
         console.error('Unexpected error:', err);
-        stream?.markdown('An unexpected error occurred. Please try again.');
+        stream?.markdown(`An unexpected error occurred. Please try again.${newlineSpacing}`);
     }
 }
