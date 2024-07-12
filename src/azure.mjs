@@ -1,3 +1,4 @@
+// azure.mjs
 import { AssistantsClient, AzureKeyCredential } from "@azure/openai-assistants";
 //import { setLogLevel } from "@azure/logger";
 //setLogLevel("info");

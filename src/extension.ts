@@ -85,7 +85,7 @@ async function createWrapper(configuration: vscode.WorkspaceConfiguration): Prom
 
 async function updateChatParticipant(context: vscode.ExtensionContext, configuration: vscode.WorkspaceConfiguration) {
     const model = configuration.get<string>('model', 'gpt-3.5-turbo');
-    const assistantId = configuration.get<string>('assistantId', '');
+    let assistantId = configuration.get<string>('assistantId', '');
     const wrapper = await createWrapper(configuration);
 
     if (chatParticipant) {
@@ -100,9 +100,7 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         if (!savedAssistant) {
             // If the saved assistant doesn't exist, clear the assistantId setting
             await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
-        } else {
-            // If the saved assistant exists, use it
-            vscode.window.showInformationMessage(`Using saved assistant: ${savedAssistant.name || savedAssistant.id}. You can use the /change command to change the assistant.`);
+            assistantId = '';
         }
     }
 
@@ -110,12 +108,15 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         // If no assistant ID is saved or the saved assistant doesn't exist, prompt the user to select one
         const newAssistantId = await promptForAssistant(wrapper, configuration);
         if (newAssistantId) {
-            await configuration.update('assistantId', newAssistantId, vscode.ConfigurationTarget.Workspace);
+            assistantId = newAssistantId;
+            await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Workspace);
         }
     }
 
     chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);
     chatParticipantCreated = true;
+
+    console.log(`Chat participant updated with model: ${model} and assistantId: ${assistantId}`);
 }
 
 export async function activate(context: vscode.ExtensionContext) {

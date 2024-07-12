@@ -109,8 +109,24 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
         context.globalState.update('assistantsChatExtension.userId', userId);
     }
 
+    let isFirstMessage = true;
+
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
+            // Check if this is the first message in the conversation
+            if (isFirstMessage) {
+                isFirstMessage = false;
+                if (assistantId) {
+                    const assistant = await wrapper.retrieveAssistant(assistantId);
+                    if (assistant) {
+                        stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.`);
+                    }
+                } else {
+                    stream.markdown('No assistant selected. Please use the `/change` command to select an assistant.');
+                    return { metadata: { command: '' } };
+                }
+            }
+
             if (request.command === 'change') {
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
                 if (newAssistantId) {
@@ -179,6 +195,8 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     gpt.iconPath = vscode.Uri.joinPath(context.extensionUri, 'icon.png');
 
     context.subscriptions.push(gpt);
+
+    console.log(`Chat participant registered with model: ${model} and assistantId: ${assistantId}`);
 
     return gpt;
 }
