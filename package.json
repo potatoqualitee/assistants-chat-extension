@@ -2,14 +2,14 @@
     "name": "assistants-chat-extension",
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "publisher": "chrissylemaire",
     "categories": [
         "AI",
         "Chat"
     ],
     "engines": {
-        "vscode": "^1.90.0"
+        "vscode": "^1.90.0-insiders"
     },
     "extensionDependencies": [
         "github.copilot-chat"
@@ -67,8 +67,12 @@
                     "type": "string",
                     "default": "",
                     "description": "The ID of the selected assistant. This is managed automatically by the extension and should not be modified manually.",
-                    "scope": "resource",
-                    "readonly": true
+                    "scope": "resource"
+                },
+                "assistantsChatExtension.sendCodeContext": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable to send file context to OpenAI for enhanced responses."
                 }
             }
         },

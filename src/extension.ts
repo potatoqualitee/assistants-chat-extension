@@ -146,6 +146,26 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
  * Activates the extension.
  * @param context - The extension context.
  */
+
+    // Automatically detect and send file context, with privacy option
+    const configuration = vscode.workspace.getConfiguration('yourExtensionName');
+    const sendCodeContext = configuration.get<boolean>('sendCodeContext', true);
+
+    if (sendCodeContext) {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            const document = activeEditor.document;
+            const fileType = document.languageId;
+            const codeSnippet = document.getText();
+            const tokenCount = estimateTokenCount(codeSnippet);
+
+            console.log(`File type: ${fileType}, Token count for current snippet: ${tokenCount}`);
+        }
+    }
+
+function estimateTokenCount(text: string): number {
+    return Math.ceil(text.length / 4);
+}
 export async function activate(context: vscode.ExtensionContext) {
     console.debug('Activating Assistants Chat Extension');
 
