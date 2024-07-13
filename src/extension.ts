@@ -111,16 +111,16 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
     let assistantId = configuration.get<string>('savedAssistantId', '');
     const wrapper = await createWrapper(configuration);
 
-    if (chatParticipant) {
-        chatParticipant.dispose();
-    }
-
     if (assistantId) {
         const assistants = await wrapper.getAssistants();
         const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
 
         if (!savedAssistant) {
-            await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
+
+                console.log("savedAssistantId cleared from settings.");
+            }
             assistantId = '';
         }
     }
@@ -129,16 +129,17 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         const newAssistantId = await promptForAssistant(wrapper, configuration);
         if (newAssistantId) {
             assistantId = newAssistantId;
-            await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+                console.log("savedAssistantId updated in workspace settings.");
+            }
         } else {
-            vscode.window.showErrorMessage('No assistant selected. The chat participant cannot be created.');
+            console.warn('No assistant selected. The chat participant cannot be created.');
             return;
         }
     }
 
-    chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);
-    chatParticipantCreated = true;
-
+    const chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);
     console.log(`Chat participant updated with model: ${model} and assistantId: ${assistantId}`);
 }
 
@@ -151,12 +152,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
     let configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
 
+    const sendCodeContext = configuration.get<boolean>('sendCodeContext', true);
+
+    if (sendCodeContext) {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            const document = activeEditor.document;
+            const fileType = document.languageId;
+            const codeSnippet = document.getText();
+            const tokenCount = estimateTokenCount(codeSnippet);
+
+            console.log(`File type: ${fileType}, Token count for current snippet: ${tokenCount}`);
+        }
+    }
+
     if (!configuration.get<string>('apiKey') && !configuration.get<string>('azureOpenAIApiKey')) {
         await promptForApiProvider(configuration);
         configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
     }
 
-    await updateChatParticipant(context, configuration);
+    try {
+        await updateChatParticipant(context, configuration);
+    } catch (error) {
+        console.error('Failed to update chat participant:', error);
+        // Instead of throwing an error, we'll just log it and continue
+        // This allows the extension to activate even if updating the chat participant fails
+    }
 
     context.subscriptions.push(
         vscode.commands.registerCommand('assistantsChatExtension.selectAssistant', async () => {
@@ -165,7 +186,12 @@ export async function activate(context: vscode.ExtensionContext) {
                 const assistantId = await promptForAssistant(wrapper, configuration);
                 if (assistantId) {
                     configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
-                    await updateChatParticipant(context, configuration);
+                    try {
+                        await updateChatParticipant(context, configuration);
+                    } catch (error) {
+                        console.error('Failed to update chat participant:', error);
+                        vscode.window.showErrorMessage('Failed to update chat participant. The extension may not function correctly.');
+                    }
                 }
             } catch (err) {
                 console.error('Failed to retrieve assistants:', err);
@@ -176,13 +202,23 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('assistantsChatExtension.setApiKey', async () => {
             await promptForApiKey(configuration);
             configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
-            await updateChatParticipant(context, configuration);
+            try {
+                await updateChatParticipant(context, configuration);
+            } catch (error) {
+                console.error('Failed to update chat participant:', error);
+                vscode.window.showErrorMessage('Failed to update chat participant. The extension may not function correctly.');
+            }
         }),
 
         vscode.commands.registerCommand('assistantsChatExtension.setAzureConfig', async () => {
             await promptForAzureConfiguration(configuration);
             configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
-            await updateChatParticipant(context, configuration);
+            try {
+                await updateChatParticipant(context, configuration);
+            } catch (error) {
+                console.error('Failed to update chat participant:', error);
+                vscode.window.showErrorMessage('Failed to update chat participant. The extension may not function correctly.');
+            }
         }),
 
         vscode.workspace.onDidChangeConfiguration(async (event) => {
@@ -193,13 +229,23 @@ export async function activate(context: vscode.ExtensionContext) {
                     const oldProvider = configuration.get<string>('apiProvider');
                     const newProvider = newConfiguration.get<string>('apiProvider');
 
-                    if (oldProvider !== newProvider && chatParticipantCreated) {
-                        await updateChatParticipant(context, newConfiguration);
+                    if (oldProvider !== newProvider) {
+                        try {
+                            await updateChatParticipant(context, newConfiguration);
+                        } catch (error) {
+                            console.error('Failed to update chat participant:', error);
+                            vscode.window.showErrorMessage('Failed to update chat participant. The extension may not function correctly.');
+                        }
                     }
                 }
 
                 configuration = newConfiguration;
-                await updateChatParticipant(context, configuration);
+                try {
+                    await updateChatParticipant(context, configuration);
+                } catch (error) {
+                    console.error('Failed to update chat participant:', error);
+                    vscode.window.showErrorMessage('Failed to update chat participant. The extension may not function correctly.');
+                }
             }
         })
     );
@@ -214,4 +260,8 @@ export function deactivate() {
     if (chatParticipant) {
         chatParticipant.dispose();
     }
+}
+
+function estimateTokenCount(text: string): number {
+    return Math.ceil(text.length / 4);
 }
