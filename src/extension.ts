@@ -146,9 +146,11 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
  * Activates the extension.
  * @param context - The extension context.
  */
+export async function activate(context: vscode.ExtensionContext) {
+    console.debug('Activating Assistants Chat Extension');
 
-    // Automatically detect and send file context, with privacy option
-    const configuration = vscode.workspace.getConfiguration('yourExtensionName');
+    let configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
+
     const sendCodeContext = configuration.get<boolean>('sendCodeContext', true);
 
     if (sendCodeContext) {
@@ -162,14 +164,6 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
             console.log(`File type: ${fileType}, Token count for current snippet: ${tokenCount}`);
         }
     }
-
-function estimateTokenCount(text: string): number {
-    return Math.ceil(text.length / 4);
-}
-export async function activate(context: vscode.ExtensionContext) {
-    console.debug('Activating Assistants Chat Extension');
-
-    let configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
 
     if (!configuration.get<string>('apiKey') && !configuration.get<string>('azureOpenAIApiKey')) {
         await promptForApiProvider(configuration);
@@ -234,4 +228,8 @@ export function deactivate() {
     if (chatParticipant) {
         chatParticipant.dispose();
     }
+}
+
+function estimateTokenCount(text: string): number {
+    return Math.ceil(text.length / 4);
 }

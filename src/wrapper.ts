@@ -108,10 +108,11 @@ export class Wrapper {
      * @param assistantId - The ID of the assistant to run.
      * @param question - The question to ask the assistant.
      * @param userId - The ID of the user asking the question.
+     * @param codeContext - The code context to include in the request (optional).
      * @returns The assistant's response content.
      */
-    async createAndPollRun(assistantId: string | undefined, question: string, userId: string): Promise<any> {
-        console.debug('createAndPollRun called with:', { assistantId, question, userId });
+    async createAndPollRun(assistantId: string | undefined, question: string, userId: string, codeContext?: { fileType: string; codeSnippet: string }): Promise<any> {
+        console.debug('createAndPollRun called with:', { assistantId, question, userId, codeContext });
 
         if (!assistantId) {
             throw new Error("Assistant ID is required");
@@ -123,7 +124,11 @@ export class Wrapper {
                 console.debug('Response from callAssistant:', response);
                 return { content: response };
             } else if (this.openaiWrapper) {
-                return await this.openaiWrapper.createAndPollRun(assistantId, question, userId);
+                const requestWithContext = codeContext
+                    ? `Code snippet in ${codeContext.fileType}:\n${codeContext.codeSnippet}\n\nQuestion: ${question}`
+                    : question;
+
+                return await this.openaiWrapper.createAndPollRun(assistantId, requestWithContext, userId);
             } else {
                 throw new Error("Neither Azure nor OpenAI client is properly initialized");
             }
@@ -134,7 +139,7 @@ export class Wrapper {
                 errorMessage += `${error.message}`;
 
                 if (error.message.includes('Run status: failed')) {
-                    const runDetails = (error as any).details; // Type assertion to access custom properties
+                    const runDetails = (error as any).details;
                     if (runDetails) {
                         const lastError = runDetails.last_error;
                         errorMessage += `${lastError ? lastError.message : 'Unknown'}`;
@@ -147,6 +152,39 @@ export class Wrapper {
             console.error("Error in createAndPollRun:", error);
             throw new Error(errorMessage);
         }
+    }
+
+    /**
+     * Additional functionality to handle context-aware operations.
+     */
+    async handleContextAwareOperations() {
+        const configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
+        const sendCodeContext = configuration.get<boolean>('sendCodeContext', true);
+
+        if (sendCodeContext && this.openaiWrapper) {
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor) {
+                const document = activeEditor.document;
+                const fileType = document.languageId;
+                const codeSnippet = document.getText();
+                const tokenCount = this.estimateTokenCount(codeSnippet);
+
+                console.log(`Context-aware operation: File type: ${fileType}, Token count: ${tokenCount}`);
+
+                return { fileType, codeSnippet };
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Estimates the token count for a given text.
+     * @param text - The text to estimate the token count for.
+     * @returns The estimated token count.
+     */
+    estimateTokenCount(text: string): number {
+        return Math.ceil(text.length / 4);
     }
 }
 
@@ -290,7 +328,10 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 console.debug('User message:', userMessage);
 
                 const safeUserId = userId || `default_user_${Date.now()}`;
-                const run = await wrapper.createAndPollRun(assistantId, userMessage, safeUserId);
+
+                const codeContext = await wrapper.handleContextAwareOperations();
+
+                const run = await wrapper.createAndPollRun(assistantId, userMessage, safeUserId, codeContext);
 
                 console.debug('Run created and polled:', run);
 
