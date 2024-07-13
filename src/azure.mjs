@@ -1,8 +1,12 @@
-// azure.mjs
 import { AssistantsClient, AzureKeyCredential } from "@azure/openai-assistants";
-//import { setLogLevel } from "@azure/logger";
-//setLogLevel("info");
 
+/**
+ * Creates an Azure Assistant.
+ * @param endpoint - The endpoint URL for Azure OpenAI services.
+ * @param apiKey - The API key for accessing Azure OpenAI services.
+ * @param params - Parameters for creating the assistant.
+ * @returns The created assistant.
+ */
 export const createAzureAssistant = async (endpoint, apiKey, params) => {
     const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
     const assistant = await assistantsClient.createAssistant(params);
@@ -12,6 +16,12 @@ export const createAzureAssistant = async (endpoint, apiKey, params) => {
     };
 };
 
+/**
+ * Lists all Azure Assistants.
+ * @param endpoint - The endpoint URL for Azure OpenAI services.
+ * @param apiKey - The API key for accessing Azure OpenAI services.
+ * @returns A list of assistants.
+ */
 export const listAssistants = async (endpoint, apiKey) => {
     const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
     const assistants = (await assistantsClient.listAssistants()).data.map(d => {
@@ -24,6 +34,15 @@ export const listAssistants = async (endpoint, apiKey) => {
 
 const threadMap = new Map();
 
+/**
+ * Calls an Azure Assistant.
+ * @param endpoint - The endpoint URL for Azure OpenAI services.
+ * @param apiKey - The API key for accessing Azure OpenAI services.
+ * @param assistantId - The ID of the assistant to call.
+ * @param question - The question to ask the assistant.
+ * @param userId - The ID of the user asking the question.
+ * @returns The assistant's response content.
+ */
 export const callAssistant = async (endpoint, apiKey, assistantId, question, userId) => {
     const assistantsClient = new AssistantsClient(endpoint, new AzureKeyCredential(apiKey));
     console.debug('callAssistant called with:', { assistantId, question, userId });
@@ -33,7 +52,6 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
             throw new Error("Assistant ID is required.");
         }
 
-        // Get or create a thread for this user
         let threadId = threadMap.get(userId);
         if (!threadId) {
             console.debug('Creating a new thread for user:', userId);
@@ -44,17 +62,12 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
             console.debug('Using existing thread for user:', userId);
         }
 
-        // Create a message in the thread
         console.debug('Creating a message in thread:', threadId);
         await assistantsClient.createMessage(threadId, "user", question);
 
-        // Create and start a run
         console.debug('Creating and starting a run');
-        let runResponse = await assistantsClient.createRun(threadId, {
-            assistantId: assistantId
-        });
+        let runResponse = await assistantsClient.createRun(threadId, { assistantId });
 
-        // Poll for completion
         console.debug('Polling for run completion');
         while (runResponse.status === "queued" || runResponse.status === "in_progress") {
             await new Promise((resolve) => setTimeout(resolve, 800));
@@ -66,18 +79,15 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
             const runMessages = await assistantsClient.listMessages(threadId);
             console.debug('Retrieved messages:', runMessages.data);
 
-            // Get only the assistant messages generated during the current run
             const assistantMessages = runMessages.data
                 .filter(msg => msg.role === "assistant" && msg.runId === runResponse.id);
 
             console.debug('Filtered assistant messages:', assistantMessages);
 
-            // Combine the content of all assistant messages
             const responseContent = assistantMessages.flatMap(msg => msg.content);
 
             console.debug('Combined response content:', responseContent);
 
-            // Extract and concatenate the text content
             const textContent = responseContent
                 .filter(item => item.type === "text")
                 .map(item => item.text.value)
@@ -91,16 +101,31 @@ export const callAssistant = async (endpoint, apiKey, assistantId, question, use
                 return "No response from the assistant.";
             }
         } else {
-            throw new Error(`Run failed with status: ${runResponse.status}`);
+            const lastError = runResponse.last_error;
+            const failedAt = runResponse.failed_at;
+            const reason = lastError ? lastError.message : "Unknown reason";
+            throw new Error(`Run status: ${completedRun.status}. ${reason}`);
         }
 
     } catch (error) {
-        console.error("Error calling assistant:", error);
-        throw error;
+        let errorMessage = "Error calling assistant.";
+        if (error instanceof Error) {
+            errorMessage += ` Error message: ${error.message}`;
+        } else {
+            errorMessage += " An unknown error occurred.";
+        }
+        console.error(errorMessage, error);
+        throw new Error(errorMessage);
     }
 };
 
 
+/**
+ * Creates a sample Azure Assistant.
+ * @param azureEndpoint - The endpoint URL for Azure OpenAI services.
+ * @param azureApiKey - The API key for accessing Azure OpenAI services.
+ * @returns The created sample assistant.
+ */
 export async function createSampleAzureAssistant(azureEndpoint, azureApiKey) {
     const defaultDeploymentNames = ["gpt-4o", "gpt-3.5-turbo", "gpt-4"];
 
@@ -117,7 +142,6 @@ export async function createSampleAzureAssistant(azureEndpoint, azureApiKey) {
         }
     }
 
-    // Prompt the user to provide their deployment name
     const customDeploymentName = await vscode.window.showInputBox({
         prompt: "Please provide your Azure OpenAI deployment name:",
         placeHolder: "Enter deployment name"

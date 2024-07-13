@@ -11,6 +11,9 @@ export const newlineSpacing = `\n
             
             \n`;
 
+/**
+ * Wrapper class for managing both OpenAI and Azure OpenAI interactions.
+ */
 export class Wrapper {
     private openaiWrapper: OpenAIWrapper | null = null;
     private isAzure: boolean;
@@ -19,6 +22,10 @@ export class Wrapper {
     private listAssistantsFunc: any;
     private callAssistantFunc: any;
 
+    /**
+     * Creates an instance of Wrapper.
+     * @param config - Configuration for the wrapper.
+     */
     constructor(config: {
         apiKey: string,
         endpoint?: string,
@@ -35,6 +42,21 @@ export class Wrapper {
         }
     }
 
+    /**
+     * Initializes the wrapper by importing necessary functions for Azure interactions.
+     */
+    async init() {
+        if (this.isAzure) {
+            const { listAssistants, callAssistant } = await import('./azure.mjs');
+            this.listAssistantsFunc = listAssistants;
+            this.callAssistantFunc = callAssistant;
+        }
+    }
+
+    /**
+     * Creates a sample assistant.
+     * @returns The created sample assistant.
+     */
     async createSampleAssistant(): Promise<Assistant | undefined> {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             const { createSampleAzureAssistant } = await import('./azure.mjs');
@@ -47,14 +69,11 @@ export class Wrapper {
         }
     }
 
-    async init() {
-        if (this.isAzure) {
-            const { listAssistants, callAssistant } = await import('./azure.mjs');
-            this.listAssistantsFunc = listAssistants;
-            this.callAssistantFunc = callAssistant;
-        }
-    }
-
+    /**
+     * Retrieves an assistant by its ID.
+     * @param assistantId - The ID of the assistant to retrieve.
+     * @returns The retrieved assistant.
+     */
     async retrieveAssistant(assistantId: string): Promise<Assistant | undefined> {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);
@@ -66,6 +85,10 @@ export class Wrapper {
         }
     }
 
+    /**
+     * Retrieves all assistants.
+     * @returns A list of assistants.
+     */
     async getAssistants(): Promise<Assistant[]> {
         if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
             const assistants = await this.listAssistantsFunc(this.azureEndpoint, this.azureApiKey);
@@ -80,6 +103,13 @@ export class Wrapper {
         }
     }
 
+    /**
+     * Creates and polls a run for an assistant.
+     * @param assistantId - The ID of the assistant to run.
+     * @param question - The question to ask the assistant.
+     * @param userId - The ID of the user asking the question.
+     * @returns The assistant's response content.
+     */
     async createAndPollRun(assistantId: string | undefined, question: string, userId: string): Promise<any> {
         console.debug('createAndPollRun called with:', { assistantId, question, userId });
 
@@ -87,23 +117,46 @@ export class Wrapper {
             throw new Error("Assistant ID is required");
         }
 
-        if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
-            try {
+        try {
+            if (this.isAzure && this.azureEndpoint && this.azureApiKey) {
                 const response = await this.callAssistantFunc(this.azureEndpoint, this.azureApiKey, assistantId, question, userId);
                 console.debug('Response from callAssistant:', response);
                 return { content: response };
-            } catch (error) {
-                console.error("Error in createAndPollRun for Azure:", error);
-                throw error;
+            } else if (this.openaiWrapper) {
+                return await this.openaiWrapper.createAndPollRun(assistantId, question, userId);
+            } else {
+                throw new Error("Neither Azure nor OpenAI client is properly initialized");
             }
-        } else if (this.openaiWrapper) {
-            return await this.openaiWrapper.createAndPollRun(assistantId, question, userId);
-        } else {
-            throw new Error("Neither Azure nor OpenAI client is properly initialized");
+        } catch (error: unknown) {
+            let errorMessage = "";
+
+            if (error instanceof Error) {
+                errorMessage += `${error.message}`;
+
+                if (error.message.includes('Run status: failed')) {
+                    const runDetails = (error as any).details; // Type assertion to access custom properties
+                    if (runDetails) {
+                        const lastError = runDetails.last_error;
+                        errorMessage += `${lastError ? lastError.message : 'Unknown'}`;
+                    }
+                }
+            } else {
+                errorMessage += " An unknown error occurred.";
+            }
+
+            console.error("Error in createAndPollRun:", error);
+            throw new Error(errorMessage);
         }
     }
 }
 
+/**
+ * Prompts the user to select an assistant.
+ * @param wrapper - The wrapper instance for assistant interactions.
+ * @param configuration - The workspace configuration.
+ * @param stream - The chat response stream.
+ * @returns The ID of the selected assistant.
+ */
 export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
     const assistants = await wrapper.getAssistants();
 
@@ -168,8 +221,16 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     return undefined;
 }
 
+/**
+ * Registers a chat participant in VS Code.
+ * @param context - The extension context.
+ * @param wrapper - The wrapper instance for assistant interactions.
+ * @param model - The model to use for the assistant.
+ * @param assistantId - The ID of the assistant.
+ * @param configuration - The workspace configuration.
+ * @returns The registered chat participant.
+ */
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
-    // Generate or retrieve a userId
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
     if (!userId) {
         userId = `user_${Date.now()}`;
@@ -180,7 +241,6 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
-            // Check if this is the first message in the conversation
             if (isFirstMessage) {
                 isFirstMessage = false;
                 const assistant = await wrapper.retrieveAssistant(assistantId);
@@ -229,7 +289,6 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
 
                 console.debug('User message:', userMessage);
 
-                // Ensure userId is a string
                 const safeUserId = userId || `default_user_${Date.now()}`;
                 const run = await wrapper.createAndPollRun(assistantId, userMessage, safeUserId);
 
@@ -263,17 +322,27 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
     return gpt;
 }
 
+/**
+ * Handles errors and sends appropriate messages to the chat response stream.
+ * @param err - The error object.
+ * @param stream - The chat response stream.
+ */
 function handleError(err: any, stream?: vscode.ChatResponseStream): void {
+    let errorMessage = "An unexpected error occurred. Please try again.";
+
     if (err instanceof vscode.LanguageModelError) {
         console.debug(err.message, err.code, err.cause);
         if (err.cause instanceof Error && err.cause.message.includes('Incorrect API key provided')) {
-            stream?.markdown(`The provided API key is incorrect. Please enter a valid API key in the extension settings.${newlineSpacing}`);
-            stream?.markdown(`To set your API key, follow these steps:\n\n1. Open the VS Code Settings (File > Preferences > Settings).\n2. Search for "Assistants Chat Extension".\n3. Enter your valid API key in the "Assistants Chat Extension: Api Key" field.\n4. Save the settings file (Ctrl+S or File > Save).\n5. You can also enter your API key via the command palette using \`assistantsChatExtension.setApiKey\`.${newlineSpacing}`);
+            errorMessage = `The provided API key is incorrect. Please enter a valid API key in the extension settings.`;
         } else {
-            stream?.markdown(`An error occurred while processing your request. Please try again.${newlineSpacing}`);
+            errorMessage = `An error occurred while processing your request. Please try again.`;
         }
-    } else {
+    } else if (err instanceof Error) {
         console.error('Unexpected error:', err);
-        stream?.markdown(`An unexpected error occurred. Please try again.${newlineSpacing}`);
+        errorMessage = `${err.message}`;
+    }
+
+    if (stream) {
+        stream.markdown(`${errorMessage}${newlineSpacing}`);
     }
 }

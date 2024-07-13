@@ -1,10 +1,16 @@
 import OpenAI from 'openai';
 
+/**
+ * Interface representing an assistant.
+ */
 export interface Assistant {
     id: string;
     name: string | null;
 }
 
+/**
+ * Interface representing a text content block.
+ */
 export interface TextContentBlock {
     type: 'text';
     text: {
@@ -13,14 +19,26 @@ export interface TextContentBlock {
     };
 }
 
+/**
+ * Wrapper class for interacting with the OpenAI API.
+ */
 export class OpenAIWrapper {
     private openaiClient: OpenAI;
     private threadMap: Map<string, string> = new Map();
 
+    /**
+     * Creates an instance of OpenAIWrapper.
+     * @param apiKey - The API key for accessing OpenAI services.
+     */
     constructor(apiKey: string) {
         this.openaiClient = new OpenAI({ apiKey });
     }
 
+    /**
+     * Creates a new assistant.
+     * @param params - Parameters for creating the assistant.
+     * @returns The created assistant.
+     */
     async createAssistant(params: { name: string, instructions: string, model: string }): Promise<Assistant> {
         const assistant = await this.openaiClient.beta.assistants.create(params);
         return {
@@ -29,6 +47,10 @@ export class OpenAIWrapper {
         };
     }
 
+    /**
+     * Creates a sample assistant with predefined settings.
+     * @returns The created sample assistant.
+     */
     async createSampleAssistant(): Promise<Assistant | undefined> {
         return this.createAssistant({
             name: "Beavis and Butthead",
@@ -36,7 +58,12 @@ export class OpenAIWrapper {
             model: "gpt-3.5-turbo"
         });
     }
-    
+
+    /**
+     * Retrieves an assistant by its ID.
+     * @param assistantId - The ID of the assistant to retrieve.
+     * @returns The retrieved assistant.
+     */
     async retrieveAssistant(assistantId: string): Promise<Assistant | undefined> {
         try {
             const assistant = await this.openaiClient.beta.assistants.retrieve(assistantId);
@@ -49,7 +76,11 @@ export class OpenAIWrapper {
             return undefined;
         }
     }
-    
+
+    /**
+     * Lists all assistants.
+     * @returns A list of assistants.
+     */
     async listAssistants(): Promise<Assistant[]> {
         const assistants = await this.openaiClient.beta.assistants.list({
             order: "desc",
@@ -58,6 +89,13 @@ export class OpenAIWrapper {
         return assistants.data;
     }
 
+    /**
+     * Creates and polls a run for an assistant.
+     * @param assistantId - The ID of the assistant to run.
+     * @param question - The question to ask the assistant.
+     * @param userId - The ID of the user asking the question.
+     * @returns The assistant's response content.
+     */
     async createAndPollRun(assistantId: string, question: string, userId: string): Promise<{ content: string }> {
         try {
             let threadId = this.threadMap.get(userId);
@@ -98,11 +136,14 @@ export class OpenAIWrapper {
                     throw new Error('Unexpected structure of assistant message');
                 }
             } else {
-                throw new Error(`Run failed with status: ${completedRun.status}`);
+                const lastError = completedRun.last_error;
+                const reason = lastError ? lastError.message : "Unknown reason";
+                throw new Error(`Run status: ${completedRun.status}. ${reason}`);
             }
         } catch (error) {
             console.error("Error in createAndPollRun for OpenAI:", error);
             throw error;
         }
     }
+
 }
