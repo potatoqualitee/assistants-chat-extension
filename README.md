@@ -55,7 +55,7 @@ This extension uses OpenAI's Assistants API and Azure OpenAI Service, which allo
    - **Open the Copilot Chat interface**: Launch Visual Studio Code Insiders and ensure that the GitHub Copilot Chat extension is installed and active.
    - **Select an assistant**:
      - Use the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on macOS) and type "AI Assistant: Select Assistant".
-     - Browse through the list of available assistants tailored for different tasks and select the one that best matches your project requirements.
+     - Browse through the list of your assistants. If you don't have one, you will be offered to create a new Beavis and Butthead assistant.
      - Each assistant maintains its own thread, allowing for context retention and more meaningful interactions over time. This ensures continuity in conversations and follow-up questions, reducing the need to re-explain context or re-establish the current state of the project.
 
 3. **Start Chatting**:
