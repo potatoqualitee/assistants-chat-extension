@@ -87,11 +87,7 @@
                 "commands": [
                     {
                         "name": "change",
-                        "description": "Ask how to change the OpenAI assistant"
-                    },
-                    {
-                        "name": "clearassistant",
-                        "description": "Clear the saved assistant ID"
+                        "description": "Change the OpenAI assistant"
                     }
                 ]
             }

@@ -333,21 +333,6 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 }
             }
 
-            if (request.command === 'clearassistant') {
-                if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-                    await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
-                    console.log("Assistant ID cleared from settings.");
-                }
-                assistantId = '';
-                stream.markdown(`The saved assistant ID has been cleared. Please use the \`/change\` command to select a new assistant.${newlineSpacing}`);
-                try {
-                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', true);
-                } catch (error) {
-                    console.warn("Unable to update workspace state. The interaction state won't be reset.", error);
-                }
-                return { metadata: { command: 'clearassistant' } };
-            }
-
             if (!assistantId) {
                 stream.markdown(`No assistant selected. Please use the \`/change\` command to select an assistant.${newlineSpacing}`);
                 return { metadata: { command: '' } };
