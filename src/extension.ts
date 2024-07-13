@@ -108,7 +108,7 @@ async function createWrapper(configuration: vscode.WorkspaceConfiguration): Prom
  */
 async function updateChatParticipant(context: vscode.ExtensionContext, configuration: vscode.WorkspaceConfiguration) {
     const model = configuration.get<string>('model', 'gpt-3.5-turbo');
-    let assistantId = configuration.get<string>('assistantId', '');
+    let assistantId = configuration.get<string>('savedAssistantId', '');
     const wrapper = await createWrapper(configuration);
 
     if (chatParticipant) {
@@ -120,7 +120,7 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
 
         if (!savedAssistant) {
-            await configuration.update('assistantId', '', vscode.ConfigurationTarget.Workspace);
+            await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
             assistantId = '';
         }
     }
@@ -129,7 +129,7 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         const newAssistantId = await promptForAssistant(wrapper, configuration);
         if (newAssistantId) {
             assistantId = newAssistantId;
-            await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+            await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
         } else {
             vscode.window.showErrorMessage('No assistant selected. The chat participant cannot be created.');
             return;
