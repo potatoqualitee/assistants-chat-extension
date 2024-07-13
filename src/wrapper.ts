@@ -9,7 +9,7 @@ interface IGPTChatResult extends vscode.ChatResult {
 
 export const newlineSpacing = `\n
             
-            \n`;
+\n`;
 
 /**
  * Wrapper class for managing both OpenAI and Azure OpenAI interactions.
@@ -169,7 +169,7 @@ export class Wrapper {
                 const codeSnippet = document.getText();
                 const tokenCount = this.estimateTokenCount(codeSnippet);
 
-                console.log(`Context-aware operation: File type: ${fileType}, Token count: ${tokenCount}`);
+                console.log(`Context-aware operation: File type: ${fileType}, Fake token count: ${tokenCount}`);
 
                 return { fileType, codeSnippet };
             }
@@ -228,7 +228,11 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         }
     } else if (assistants.length === 1) {
         const assistant = assistants[0];
-        configuration.update('savedAssistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+            await configuration.update('savedAssistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
+        } else {
+            console.warn("No workspace is open. The assistant ID won't be saved to workspace settings.");
+        }
         if (stream) {
             stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
         }
@@ -247,7 +251,11 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     if (selectedAssistantName) {
         const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
         if (selectedAssistant) {
-            configuration.update('savedAssistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                await configuration.update('savedAssistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
+            } else {
+                console.log("No workspace is open. The assistant ID won't be saved to workspace settings.");
+            }
             return selectedAssistant.id;
         }
     } else {
@@ -288,7 +296,11 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
                 if (newAssistantId) {
                     assistantId = newAssistantId;
-                    await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+                    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                        await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+                    } else {
+                        console.log("No workspace is open. The assistant ID won't be saved for future sessions.");
+                    }
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
@@ -297,7 +309,11 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                         stream.markdown(`You have switched to the assistant with ID: **${assistantId}**.${newlineSpacing}`);
                     }
                     isFirstInteraction = false;
-                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
+                    try {
+                        await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
+                    } catch (error) {
+                        console.log("Unable to update workspace state. The interaction state won't be saved.");
+                    }
                 } else {
                     stream.markdown(`No assistant selected. Please try again.${newlineSpacing}`);
                 }
@@ -310,14 +326,25 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
                 }
                 isFirstInteraction = false;
-                await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
+                try {
+                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
+                } catch (error) {
+                    console.warn("Unable to update workspace state. The interaction state won't be saved.", error);
+                }
             }
 
             if (request.command === 'clearassistant') {
-                await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
+                if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                    await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
+                    console.log("Assistant ID cleared from settings.");
+                }
                 assistantId = '';
                 stream.markdown(`The saved assistant ID has been cleared. Please use the \`/change\` command to select a new assistant.${newlineSpacing}`);
-                await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', true);
+                try {
+                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', true);
+                } catch (error) {
+                    console.warn("Unable to update workspace state. The interaction state won't be reset.", error);
+                }
                 return { metadata: { command: 'clearassistant' } };
             }
 
