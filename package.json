@@ -2,7 +2,7 @@
     "name": "assistants-chat-extension",
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
-    "version": "0.0.3",
+    "version": "1.0.2",
     "publisher": "chrissylemaire",
     "categories": [
         "AI",
@@ -27,15 +27,6 @@
                     "type": "string",
                     "default": "",
                     "description": "API key for accessing OpenAI services."
-                },
-                "assistantsChatExtension.model": {
-                    "type": "string",
-                    "enum": [
-                        "gpt-3.5-turbo",
-                        "gpt-4"
-                    ],
-                    "default": "gpt-3.5-turbo",
-                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
                 },
                 "assistantsChatExtension.apiProvider": {
                     "type": "string",
@@ -62,6 +53,22 @@
                     "examples": [
                         "https://your-resource-name.openai.azure.com"
                     ]
+                },
+                "assistantsChatExtension.model": {
+                    "type": "string",
+                    "enum": [
+                        "gpt-3.5-turbo",
+                        "gpt-4"
+                    ],
+                    "default": "gpt-3.5-turbo",
+                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                },
+                "assistantsChatExtension.savedAssistantId": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The ID of the selected assistant. This is managed automatically by the extension and should not be modified manually.",
+                    "scope": "resource",
+                    "readonly": true
                 }
             }
         },
@@ -77,6 +84,10 @@
                     {
                         "name": "change",
                         "description": "Ask how to change the OpenAI assistant"
+                    },
+                    {
+                        "name": "clearassistant",
+                        "description": "Clear the saved assistant ID"
                     }
                 ]
             }
@@ -104,13 +115,13 @@
     "pricing": "Free",
     "main": "./dist/extension.js",
     "scripts": {
-        "compile": "npm run check-types && node esbuild.js",
         "check-types": "tsc --noEmit",
+        "compile": "npm run check-types && node esbuild.js",
+        "package": "npm run check-types && node esbuild.js --production",
+        "vscode:prepublish": "npm run package",
         "watch": "npm-run-all -p watch:*",
         "watch:esbuild": "node esbuild.js --watch",
-        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-        "vscode:prepublish": "npm run package",
-        "package": "npm run check-types && node esbuild.js --production"
+        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json"
     },
     "dependencies": {
         "@azure/openai": "^1.0.0-beta.12",
