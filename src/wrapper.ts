@@ -267,6 +267,11 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
  * @param assistantId - The ID of the assistant.
  * @param configuration - The workspace configuration.
  * @returns The registered chat participant.
+ * 
+ * This function creates a chat participant that can interact with the user.
+ * It handles assistant changes, clears assistant IDs, and manages the flow of conversation.
+ * The function ensures that the "Using assistant" message is shown only on the first interaction
+ * or when starting a new session, and not after changing assistants.
  */
 export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
@@ -275,17 +280,9 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
         context.globalState.update('assistantsChatExtension.userId', userId);
     }
 
-    let isFirstMessage = true;
-
     const handler: vscode.ChatRequestHandler = async (request: vscode.ChatRequest, chatContext: vscode.ChatContext, stream: vscode.ChatResponseStream, token: vscode.CancellationToken): Promise<IGPTChatResult> => {
         try {
-            if (isFirstMessage) {
-                isFirstMessage = false;
-                const assistant = await wrapper.retrieveAssistant(assistantId);
-                if (assistant) {
-                    stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
-                }
-            }
+            let isFirstInteraction = context.workspaceState.get<boolean>('assistantsChatExtension.isFirstInteraction', true);
 
             if (request.command === 'change') {
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
@@ -295,20 +292,32 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
-                        stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**. How can I assist you today?${newlineSpacing}`);
+                        stream.markdown(`You have switched to the assistant: **${selectedAssistant.name}**.${newlineSpacing}`);
                     } else {
-                        stream.markdown(`You have switched to the assistant with ID: **${assistantId}**. How can I assist you today?${newlineSpacing}`);
+                        stream.markdown(`You have switched to the assistant with ID: **${assistantId}**.${newlineSpacing}`);
                     }
+                    isFirstInteraction = false;
+                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
                 } else {
                     stream.markdown(`No assistant selected. Please try again.${newlineSpacing}`);
                 }
                 return { metadata: { command: 'change' } };
             }
 
+            if (isFirstInteraction) {
+                const assistant = await wrapper.retrieveAssistant(assistantId);
+                if (assistant) {
+                    stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
+                }
+                isFirstInteraction = false;
+                await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
+            }
+
             if (request.command === 'clearassistant') {
                 await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
                 assistantId = '';
                 stream.markdown(`The saved assistant ID has been cleared. Please use the \`/change\` command to select a new assistant.${newlineSpacing}`);
+                await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', true);
                 return { metadata: { command: 'clearassistant' } };
             }
 
