@@ -128,6 +128,14 @@ For most users, **Copilot GPT-4 + Assistants AI GPT-3.5-Turbo** offers a good ba
 
 ## Adding an Assistant in the OpenAI API Playground
 
+You can add an API assistant one of two ways: automatically or using the OpenAI API Playground.
+
+### Automatically
+
+Just type `@assistant hello` and if you don't have any assistants, you will be prompted to automatically create a Beavis and Butthead assistant. B&B were chosen because of their unique speaking style which makes it obvious that the assistant is working.
+
+### Using the OpenAI API Playground
+
 1. Go to the [OpenAI API Playground](https://platform.openai.com/playground/assistants).
 2. Click on the "Assistants" tab in the left sidebar.
 3. Click on "New Assistant" to create a new assistant.
