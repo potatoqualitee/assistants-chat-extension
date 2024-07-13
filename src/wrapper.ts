@@ -228,7 +228,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         }
     } else if (assistants.length === 1) {
         const assistant = assistants[0];
-        configuration.update('assistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
+        configuration.update('savedAssistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
         if (stream) {
             stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
         }
@@ -247,7 +247,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     if (selectedAssistantName) {
         const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
         if (selectedAssistant) {
-            configuration.update('assistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
+            configuration.update('savedAssistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
             return selectedAssistant.id;
         }
     } else {
@@ -291,7 +291,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                 const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
                 if (newAssistantId) {
                     assistantId = newAssistantId;
-                    await configuration.update('assistantId', assistantId, vscode.ConfigurationTarget.Workspace);
+                    await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
