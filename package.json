@@ -2,7 +2,7 @@
     "name": "assistants-chat-extension",
     "displayName": "Assistants Chat Extension",
     "description": "A GitHub Copilot Chat Extension that integrates OpenAI Assistants",
-    "version": "1.0.5",
+    "version": "1.1.0",
     "publisher": "chrissylemaire",
     "categories": [
         "AI",
@@ -61,7 +61,7 @@
                         "gpt-4"
                     ],
                     "default": "gpt-3.5-turbo",
-                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses."
+                    "description": "The model to use for the chat extension. Choose 'gpt-3.5-turbo' for faster performance or 'gpt-4' for slower but more complex and nuanced responses. I'm unsure if this does anything, actually."
                 },
                 "assistantsChatExtension.savedAssistantId": {
                     "type": "string",
@@ -79,7 +79,6 @@
         "chatParticipants": [
             {
                 "id": "assistant",
-                "sampleRequest": "Ask the assistant how to change the OpenAI assistant",
                 "fullName": "Assistant",
                 "name": "assistant",
                 "description": "Your OpenAI Assistant",
@@ -93,10 +92,6 @@
             }
         ],
         "commands": [
-            {
-                "command": "assistant.query",
-                "title": "AI Assistant: Ask Assistant"
-            },
             {
                 "command": "assistantsChatExtension.setApiKey",
                 "title": "AI Assistant: Set API Key"

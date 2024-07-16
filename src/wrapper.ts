@@ -195,7 +195,7 @@ export class Wrapper {
  * @param stream - The chat response stream.
  * @returns The ID of the selected assistant.
  */
-export async function promptForAssistant(wrapper: Wrapper, configuration: vscode.WorkspaceConfiguration, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
+export async function promptForAssistant(wrapper: Wrapper, context: vscode.ExtensionContext, stream?: vscode.ChatResponseStream): Promise<string | undefined> {
     const assistants = await wrapper.getAssistants();
 
     if (assistants.length === 0) {
@@ -228,11 +228,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
         }
     } else if (assistants.length === 1) {
         const assistant = assistants[0];
-        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-            await configuration.update('savedAssistantId', assistant.id, vscode.ConfigurationTarget.Workspace);
-        } else {
-            console.warn("No workspace is open. The assistant ID won't be saved to workspace settings.");
-        }
+        context.workspaceState.update('savedAssistantId', assistant.id);
         if (stream) {
             stream.markdown(`Automatically selected assistant: ${assistant.name || assistant.id}${newlineSpacing}`);
         }
@@ -251,11 +247,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
     if (selectedAssistantName) {
         const selectedAssistant = assistants.find((assistant: Assistant) => assistant.name === selectedAssistantName);
         if (selectedAssistant) {
-            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-                await configuration.update('savedAssistantId', selectedAssistant.id, vscode.ConfigurationTarget.Workspace);
-            } else {
-                console.log("No workspace is open. The assistant ID won't be saved to workspace settings.");
-            }
+            context.workspaceState.update('savedAssistantId', selectedAssistant.id);
             return selectedAssistant.id;
         }
     } else {
@@ -281,7 +273,7 @@ export async function promptForAssistant(wrapper: Wrapper, configuration: vscode
  * The function ensures that the "Using assistant" message is shown only on the first interaction
  * or when starting a new session, and not after changing assistants.
  */
-export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string, configuration: vscode.WorkspaceConfiguration): Promise<vscode.ChatParticipant> {
+export async function registerChatParticipant(context: vscode.ExtensionContext, wrapper: Wrapper, model: string, assistantId: string): Promise<vscode.ChatParticipant> {
     let userId = context.globalState.get<string>('assistantsChatExtension.userId');
     if (!userId) {
         userId = `user_${Date.now()}`;
@@ -293,14 +285,10 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
             let isFirstInteraction = context.workspaceState.get<boolean>('assistantsChatExtension.isFirstInteraction', true);
 
             if (request.command === 'change') {
-                const newAssistantId = await promptForAssistant(wrapper, configuration, stream);
+                const newAssistantId = await promptForAssistant(wrapper, context, stream);
                 if (newAssistantId) {
                     assistantId = newAssistantId;
-                    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-                        await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
-                    } else {
-                        console.log("No workspace is open. The assistant ID won't be saved for future sessions.");
-                    }
+                    context.workspaceState.update('savedAssistantId', assistantId);
                     const assistants = await wrapper.getAssistants();
                     const selectedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
                     if (selectedAssistant && selectedAssistant.name) {
@@ -309,11 +297,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                         stream.markdown(`You have switched to the assistant with ID: **${assistantId}**.${newlineSpacing}`);
                     }
                     isFirstInteraction = false;
-                    try {
-                        await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
-                    } catch (error) {
-                        console.log("Unable to update workspace state. The interaction state won't be saved.");
-                    }
+                    context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
                 } else {
                     stream.markdown(`No assistant selected. Please try again.${newlineSpacing}`);
                 }
@@ -326,11 +310,7 @@ export async function registerChatParticipant(context: vscode.ExtensionContext, 
                     stream.markdown(`Using assistant: **${assistant.name || assistant.id}**. You can use the \`/change\` command to switch assistants.${newlineSpacing}`);
                 }
                 isFirstInteraction = false;
-                try {
-                    await context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
-                } catch (error) {
-                    console.warn("Unable to update workspace state. The interaction state won't be saved.", error);
-                }
+                context.workspaceState.update('assistantsChatExtension.isFirstInteraction', false);
             }
 
             if (!assistantId) {
