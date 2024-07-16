@@ -159,3 +159,7 @@ Contributions to the Assistants Chat Extension are welcome! If you encounter any
 * [Language Model API](https://code.visualstudio.com/api/extension-guides/language-model)
 * [Prompt Builder](https://www.npmjs.com/package/@vscode/prompt-tsx)
 * [Azure OpenAI Documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/)
+
+## Changelog
+
+1.1.0 - Moved configuration to context.workspaceState instead of settings.json

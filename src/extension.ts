@@ -108,7 +108,7 @@ async function createWrapper(configuration: vscode.WorkspaceConfiguration): Prom
  */
 async function updateChatParticipant(context: vscode.ExtensionContext, configuration: vscode.WorkspaceConfiguration) {
     const model = configuration.get<string>('model', 'gpt-3.5-turbo');
-    let assistantId = configuration.get<string>('savedAssistantId', '');
+    let assistantId = context.workspaceState.get<string>('savedAssistantId', '');
     const wrapper = await createWrapper(configuration);
 
     if (assistantId) {
@@ -116,30 +116,24 @@ async function updateChatParticipant(context: vscode.ExtensionContext, configura
         const savedAssistant = assistants.find((assistant: Assistant) => assistant.id === assistantId);
 
         if (!savedAssistant) {
-            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-                await configuration.update('savedAssistantId', '', vscode.ConfigurationTarget.Workspace);
-
-                console.log("savedAssistantId cleared from settings.");
-            }
+            console.log("Saved assistant not found. Clearing savedAssistantId.");
+            context.workspaceState.update('savedAssistantId', undefined);
             assistantId = '';
         }
     }
 
     if (!assistantId) {
-        const newAssistantId = await promptForAssistant(wrapper, configuration);
+        const newAssistantId = await promptForAssistant(wrapper, context);
         if (newAssistantId) {
             assistantId = newAssistantId;
-            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-                await configuration.update('savedAssistantId', assistantId, vscode.ConfigurationTarget.Workspace);
-                console.log("savedAssistantId updated in workspace settings.");
-            }
+            context.workspaceState.update('savedAssistantId', assistantId);
         } else {
             console.warn('No assistant selected. The chat participant cannot be created.');
             return;
         }
     }
 
-    const chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId, configuration);
+    const chatParticipant = await registerChatParticipant(context, wrapper, model, assistantId);
     console.log(`Chat participant updated with model: ${model} and assistantId: ${assistantId}`);
 }
 
@@ -183,9 +177,8 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('assistantsChatExtension.selectAssistant', async () => {
             try {
                 const wrapper = await createWrapper(configuration);
-                const assistantId = await promptForAssistant(wrapper, configuration);
+                const assistantId = await promptForAssistant(wrapper, context);
                 if (assistantId) {
-                    configuration = vscode.workspace.getConfiguration('assistantsChatExtension');
                     try {
                         await updateChatParticipant(context, configuration);
                     } catch (error) {
