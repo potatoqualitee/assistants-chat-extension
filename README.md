@@ -37,6 +37,9 @@ This extension uses OpenAI's Assistants API and Azure OpenAI Service, which allo
 
 ## Getting Started
 
+> [!IMPORTANT]  
+> You must be using Visual Studio Code Insiders Edition for this to work.
+
 1. **Set up your OpenAI or Azure OpenAI API key**:
    - **OpenAI**:
      - **Create an OpenAI account**: Visit [OpenAI's website](https://www.openai.com) and sign up for an account if you don't have one.
