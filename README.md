@@ -19,9 +19,6 @@
 
 The Assistants Chat Extension (`@assistant`) integrates the OpenAI Assistants API into GitHub Copilot Chat, allowing you to create custom assistants that understand your project's context and generate relevant code snippets. This repository provides a working extension and serves as an example for developers looking to build their own advanced [GitHub Copilot Chat Extensions](https://github.com/marketplace?type=apps&copilot_app=true).
 
-> [!NOTE]
-> The Assistants Chat Extension is currently in limited public beta, accessible by invitation only.
-
 This extension uses OpenAI's Assistants API and Azure OpenAI Service, which allow you to build AI assistants tailored to your specific needs. By integrating API Assistant capabilities, the Assistants Chat Extension enables you to implement features like context-aware responses about project details, such as the latest version of a tool or library.
 
 <p align="center" width="100%">
